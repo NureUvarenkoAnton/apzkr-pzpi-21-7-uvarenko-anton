@@ -4,6 +4,13 @@
 
 package core
 
+import (
+	"database/sql"
+)
+
 type User struct {
-	ID int64
+	ID       int64
+	Name     sql.NullString
+	Email    sql.NullString
+	Password sql.NullString
 }

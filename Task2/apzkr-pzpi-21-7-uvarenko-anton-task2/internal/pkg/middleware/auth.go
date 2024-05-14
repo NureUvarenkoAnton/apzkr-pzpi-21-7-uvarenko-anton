@@ -1,32 +1,39 @@
 package middleware
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"firebase.google.com/go/v4/auth"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/jwt"
+
 	"github.com/gin-gonic/gin"
 )
 
-func TokenVerifier(authClient *auth.Client) gin.HandlerFunc {
+func TokenVerifier(jwtHandler jwt.JWT, userTypesAllowed []core.UsersUserType) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		rawToken := strings.Split(ctx.Request.Header.Get("Authorization"), " ")
 		if len(rawToken) < 2 {
-			ctx.JSON(http.StatusUnauthorized, nil)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, nil)
 			return
 		}
 
-		token, err := authClient.VerifyIDToken(ctx, rawToken[1])
+		id, err := jwtHandler.VerifyToken(rawToken[1], userTypesAllowed)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, nil)
+			fmt.Println(err)
+			if errors.Is(err, pkg.ErrForbiden) {
+				ctx.AbortWithStatusJSON(http.StatusForbidden, nil)
+				return
+			}
+
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, nil)
 			return
 		}
 
-		if token.Expires < time.Now().Unix() {
-			ctx.JSON(http.StatusUnauthorized, nil)
-			return
-		}
+		ctx.Set("user_id", id)
 
 		ctx.Next()
 	}

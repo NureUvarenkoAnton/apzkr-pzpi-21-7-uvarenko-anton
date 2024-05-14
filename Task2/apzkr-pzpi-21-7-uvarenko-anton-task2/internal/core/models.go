@@ -6,11 +6,65 @@ package core
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 )
+
+type UsersUserType string
+
+const (
+	UsersUserTypeDefault UsersUserType = "default"
+	UsersUserTypeWalker  UsersUserType = "walker"
+	UsersUserTypeAdmin   UsersUserType = "admin"
+)
+
+func (e *UsersUserType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UsersUserType(s)
+	case string:
+		*e = UsersUserType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UsersUserType: %T", src)
+	}
+	return nil
+}
+
+type NullUsersUserType struct {
+	UsersUserType UsersUserType
+	Valid         bool // Valid is true if UsersUserType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUsersUserType) Scan(value interface{}) error {
+	if value == nil {
+		ns.UsersUserType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UsersUserType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUsersUserType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UsersUserType), nil
+}
+
+type Pet struct {
+	ID             int64
+	OwnerID        sql.NullInt64
+	Name           sql.NullString
+	Age            sql.NullInt16
+	AdditionalInfo sql.NullString
+}
 
 type User struct {
 	ID       int64
 	Name     sql.NullString
 	Email    sql.NullString
 	Password sql.NullString
+	UserType NullUsersUserType
 }

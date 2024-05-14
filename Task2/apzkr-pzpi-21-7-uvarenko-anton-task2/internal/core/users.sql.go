@@ -11,22 +11,28 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (name, email, password) VALUES(?, ?, ?)
+INSERT INTO users (name, email, password, user_type) VALUES(?, ?, ?, ?)
 `
 
 type CreateUserParams struct {
 	Name     sql.NullString
 	Email    sql.NullString
 	Password sql.NullString
+	UserType NullUsersUserType
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser, arg.Name, arg.Email, arg.Password)
+	_, err := q.db.ExecContext(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.Password,
+		arg.UserType,
+	)
 	return err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password FROM users
+SELECT id, name, email, password, user_type FROM users
 WHERE email = ?
 `
 
@@ -38,12 +44,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email sql.NullString) (Use
 		&i.Name,
 		&i.Email,
 		&i.Password,
+		&i.UserType,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, name, email, password FROM users
+SELECT id, name, email, password, user_type FROM users
 WHERE id = ?
 `
 
@@ -55,12 +62,13 @@ func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 		&i.Name,
 		&i.Email,
 		&i.Password,
+		&i.UserType,
 	)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, name, email, password FROM users
+SELECT id, name, email, password, user_type FROM users
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
@@ -77,6 +85,7 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 			&i.Name,
 			&i.Email,
 			&i.Password,
+			&i.UserType,
 		); err != nil {
 			return nil, err
 		}

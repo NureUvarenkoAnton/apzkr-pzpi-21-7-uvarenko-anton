@@ -23,7 +23,7 @@ func main() {
 	)
 
 	if arg == "up" {
-		m.Steps(1)
+		m.Up()
 	}
 	if arg == "down" {
 		m.Down()

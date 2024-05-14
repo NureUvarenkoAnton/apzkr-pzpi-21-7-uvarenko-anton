@@ -4,30 +4,32 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
+	"time"
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/jwt"
 
-	"firebase.google.com/go/v4/auth"
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	userRepo           iAuthUserRepo
-	firebaseAuthClient *auth.Client
+	userRepo   iAuthUserRepo
+	jwtHandler jwt.JWT
 }
+
+const tokenTimeToLive = time.Hour * 24 * 7
 
 type iAuthUserRepo interface {
 	CreateUser(ctx context.Context, arg core.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email sql.NullString) (core.User, error)
 }
 
-func NewAuthService(repo iAuthUserRepo, authClient *auth.Client) *AuthService {
+func NewAuthService(repo iAuthUserRepo, jwtHandler jwt.JWT) *AuthService {
 	return &AuthService{
-		userRepo:           repo,
-		firebaseAuthClient: authClient,
+		userRepo:   repo,
+		jwtHandler: jwtHandler,
 	}
 }
 
@@ -51,7 +53,7 @@ func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParam
 			return "", pkg.ErrEmailDuplicate
 		}
 
-		fmt.Printf("[ERROR] %v: [%v]", pkg.ErrDbInternal, err)
+		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return "", pkg.ErrDbInternal
 	}
 
@@ -60,9 +62,9 @@ func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParam
 		return "", pkg.ErrRetrievingUser
 	}
 
-	token, err := s.firebaseAuthClient.CustomToken(ctx, strconv.Itoa(int(dbUser.ID)))
+	token, err := s.jwtHandler.GenUserToken(dbUser.ID, dbUser.UserType.UsersUserType, time.Now().Add(tokenTimeToLive))
 	if err != nil {
-		fmt.Printf("[ERROR] %v: [%v]", pkg.ErrCreatingToken, err)
+		pkg.PrintErr(pkg.ErrCreatingToken, err)
 		return "", pkg.ErrCreatingToken
 	}
 
@@ -79,10 +81,10 @@ func (s AuthService) Login(ctx context.Context, payload core.CreateUserParams) (
 
 		// not found
 		if err.Number == 1339 {
-			return "", pkg.ErrUserNotFound
+			return "", pkg.ErrNotFound
 		}
 
-		fmt.Printf("[ERROR] %v: [%v]", pkg.ErrCreatingToken, err)
+		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return "", fmt.Errorf("[ERROR] %w: [%w]", pkg.ErrDbInternal, err)
 	}
 
@@ -91,9 +93,9 @@ func (s AuthService) Login(ctx context.Context, payload core.CreateUserParams) (
 		return "", pkg.ErrWrongPassword
 	}
 
-	token, err := s.firebaseAuthClient.CustomToken(ctx, strconv.Itoa(int(user.ID)))
+	token, err := s.jwtHandler.GenUserToken(user.ID, user.UserType.UsersUserType, time.Now().Add(tokenTimeToLive))
 	if err != nil {
-		fmt.Printf("[ERROR] %v: [%v]", pkg.ErrCreatingToken, err)
+		pkg.PrintErr(pkg.ErrCreatingToken, err)
 		return "", pkg.ErrCreatingToken
 	}
 

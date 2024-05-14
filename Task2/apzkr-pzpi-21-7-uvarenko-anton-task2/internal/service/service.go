@@ -1,13 +1,21 @@
 package service
 
-import "firebase.google.com/go/v4/auth"
+import (
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/jwt"
+)
 
 type Service struct {
-	AuthService *AuthService
+	AuthService    *AuthService
+	ProfileService *ProfileService
 }
 
-func NewService(authRepo iAuthUserRepo, authClient *auth.Client) *Service {
+func NewService(
+	authRepo iAuthUserRepo,
+	jwtHandler jwt.JWT,
+	profileRepo iProfileUserRepo,
+) *Service {
 	return &Service{
-		AuthService: NewAuthService(authRepo, authClient),
+		AuthService:    NewAuthService(authRepo, jwtHandler),
+		ProfileService: NewProfileService(profileRepo),
 	}
 }

@@ -1,6 +1,13 @@
 package pkg
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
+
+func PrintErr(wrapper, err error) {
+	fmt.Printf("[ERROR] %v: [%v]\n", wrapper, err)
+}
 
 // transport errors
 var ErrPayloadDecode = errors.New("can't decode payload")
@@ -10,7 +17,7 @@ var (
 	ErrDbInternal     = errors.New("db intenrnal error")
 	ErrEmailDuplicate = errors.New("email is already taken")
 	ErrRetrievingUser = errors.New("can't retrieve user")
-	ErrUserNotFound   = errors.New("user does not exist")
+	ErrNotFound       = errors.New("entity does not exist")
 )
 
 // service errors
@@ -19,5 +26,10 @@ var (
 	ErrWrongPassword      = errors.New("wrong password")
 )
 
-// firebase errors
-var ErrCreatingToken = errors.New("something failed generating jwt token")
+// jwt errors
+var (
+	ErrCreatingToken    = errors.New("error while creating token")
+	ErrInvalidSignature = errors.New("invalid signature")
+	ErrForbiden         = errors.New("forbiden")
+	ErrTokenExpired     = errors.New("token is expired")
+)

@@ -1,17 +1,16 @@
 package transport
 
-import (
-	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/service"
-
-	"firebase.google.com/go/v4/auth"
-)
-
 type Handler struct {
-	AuthHandler *AuthHandler
+	AuthHandler    *AuthHandler
+	ProfileHandler *ProfileHandler
 }
 
-func NewHandler(service *service.Service, authClient *auth.Client) *Handler {
+func NewHandler(
+	authService iAuthService,
+	profileService iUserProfileService,
+) *Handler {
 	return &Handler{
-		AuthHandler: NewAuthHandler(service.AuthService, authClient),
+		AuthHandler:    NewAuthHandler(authService),
+		ProfileHandler: NewProfileHandler(profileService),
 	}
 }

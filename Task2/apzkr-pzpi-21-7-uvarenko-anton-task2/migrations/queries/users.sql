@@ -10,7 +10,7 @@ SELECT * FROM users
 WHERE email = ?;
 
 -- name: CreateUser :exec
-INSERT INTO users (name, email, password) VALUES(?, ?, ?);
+INSERT INTO users (name, email, password, user_type) VALUES(?, ?, ?, ?);
 
 -- name: UpdateUser :exec
 UPDATE users

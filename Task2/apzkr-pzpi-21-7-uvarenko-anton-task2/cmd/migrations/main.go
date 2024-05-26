@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -23,9 +24,15 @@ func main() {
 	)
 
 	if arg == "up" {
-		m.Up()
+		fmt.Println("going up migrations")
+		err := m.Up()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		}
 	}
 	if arg == "down" {
-		m.Down()
+		fmt.Println("going down migrations")
+		err := m.Down()
+		fmt.Printf("%v\n", err)
 	}
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,6 +25,7 @@ const tokenTimeToLive = time.Hour * 24 * 7
 type iAuthUserRepo interface {
 	CreateUser(ctx context.Context, arg core.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email sql.NullString) (core.User, error)
+	GetPetById(ctx context.Context, id int64) (core.Pet, error)
 }
 
 func NewAuthService(repo iAuthUserRepo, jwtHandler jwt.JWT) *AuthService {
@@ -34,6 +36,16 @@ func NewAuthService(repo iAuthUserRepo, jwtHandler jwt.JWT) *AuthService {
 }
 
 func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParams) (string, error) {
+	u, err := s.userRepo.GetUserByEmail(ctx, user.Email)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return "", fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	if u.UserType == user.UserType {
+		return "", pkg.ErrEmailDuplicate
+	}
+
 	pass, err := bcrypt.GenerateFromPassword([]byte(user.Password.String), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("%w: [%w]", pkg.ErrEncryptingPassword, err)
@@ -97,6 +109,26 @@ func (s AuthService) Login(ctx context.Context, payload core.CreateUserParams) (
 	if err != nil {
 		pkg.PrintErr(pkg.ErrCreatingToken, err)
 		return "", pkg.ErrCreatingToken
+	}
+
+	return token, nil
+}
+
+func (s AuthService) LoginPet(ctx context.Context, petId int64, ownerId int64) (string, error) {
+	pet, err := s.userRepo.GetPetById(ctx, petId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return "", fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	token, err := s.jwtHandler.GenUserToken(pet.ID, core.UsersUserTypePet, time.Now().Add(time.Hour*24))
+	if err != nil {
+		pkg.PrintErr(pkg.ErrCreatingToken, err)
+		return "", fmt.Errorf("%w: [%w]", pkg.ErrCreatingToken, err)
 	}
 
 	return token, nil

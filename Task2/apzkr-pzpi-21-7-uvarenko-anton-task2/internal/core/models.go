@@ -14,6 +14,7 @@ type UsersUserType string
 
 const (
 	UsersUserTypeDefault UsersUserType = "default"
+	UsersUserTypePet     UsersUserType = "pet"
 	UsersUserTypeWalker  UsersUserType = "walker"
 	UsersUserTypeAdmin   UsersUserType = "admin"
 )
@@ -53,6 +54,51 @@ func (ns NullUsersUserType) Value() (driver.Value, error) {
 	return string(ns.UsersUserType), nil
 }
 
+type WalksState string
+
+const (
+	WalksStatePending    WalksState = "pending"
+	WalksStateAccepted   WalksState = "accepted"
+	WalksStateDeclined   WalksState = "declined"
+	WalksStateInProccess WalksState = "in_proccess"
+	WalksStateFinished   WalksState = "finished"
+)
+
+func (e *WalksState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = WalksState(s)
+	case string:
+		*e = WalksState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for WalksState: %T", src)
+	}
+	return nil
+}
+
+type NullWalksState struct {
+	WalksState WalksState
+	Valid      bool // Valid is true if WalksState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullWalksState) Scan(value interface{}) error {
+	if value == nil {
+		ns.WalksState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.WalksState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullWalksState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.WalksState), nil
+}
+
 type Pet struct {
 	ID             int64
 	OwnerID        sql.NullInt64
@@ -67,4 +113,14 @@ type User struct {
 	Email    sql.NullString
 	Password sql.NullString
 	UserType NullUsersUserType
+}
+
+type Walk struct {
+	ID         int64
+	OwnerID    sql.NullInt64
+	WalkerID   sql.NullInt64
+	PetID      sql.NullInt64
+	StartTime  sql.NullTime
+	FinishTime sql.NullTime
+	State      NullWalksState
 }

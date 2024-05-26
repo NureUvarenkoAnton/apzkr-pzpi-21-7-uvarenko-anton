@@ -29,7 +29,7 @@ type iProfileUserRepo interface {
 	UpdateUser(ctx context.Context, arg core.UpdateUserParams) error
 }
 
-func (s ProfileService) AddPet(ctx context.Context, pet core.AddPetParams) error {
+func (s *ProfileService) AddPet(ctx context.Context, pet core.AddPetParams) error {
 	err := s.userRepo.AddPet(ctx, pet)
 	if err != nil {
 		err, ok := err.(*mysql.MySQLError)
@@ -37,15 +37,15 @@ func (s ProfileService) AddPet(ctx context.Context, pet core.AddPetParams) error
 			pkg.PrintErr(pkg.ErrDbInternal, err)
 			return pkg.ErrDbInternal
 		}
-		// if err.Number ==
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return pkg.ErrDbInternal
 	}
+
 	return err
 }
 
-func (s ProfileService) GetPetById(ctx context.Context, id int64) (*core.Pet, error) {
+func (s *ProfileService) GetPetById(ctx context.Context, id int64) (*core.Pet, error) {
 	pet, err := s.userRepo.GetPetById(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -59,7 +59,7 @@ func (s ProfileService) GetPetById(ctx context.Context, id int64) (*core.Pet, er
 	return &pet, nil
 }
 
-func (s ProfileService) GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error) {
+func (s *ProfileService) GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error) {
 	pets, err := s.userRepo.GetAllPetsByOwnerId(ctx, ownerID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -73,18 +73,18 @@ func (s ProfileService) GetAllPetsByOwnerId(ctx context.Context, ownerID sql.Nul
 	return pets, nil
 }
 
-func (s ProfileService) UpdatePet(ctx context.Context, pet core.UpdatePetParams) error {
-	// dbPet, err := s.userRepo.GetPetById(ctx, pet.ID)
-	// if err != nil {
-	// 	if errors.Is(err, sql.ErrNoRows) {
-	// 		return pkg.ErrNotFound
-	// 	}
-	//
-	// 	pkg.PrintErr(pkg.ErrDbInternal, err)
-	// 	return err
-	// }
+func (s *ProfileService) UpdatePet(ctx context.Context, pet core.UpdatePetParams) error {
+	_, err := s.userRepo.GetPetById(ctx, pet.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
 
-	err := s.userRepo.UpdatePet(ctx, pet)
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return err
+	}
+
+	err = s.userRepo.UpdatePet(ctx, pet)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return pkg.ErrNotFound
@@ -98,7 +98,7 @@ func (s ProfileService) UpdatePet(ctx context.Context, pet core.UpdatePetParams)
 	return nil
 }
 
-func (s ProfileService) UpdateUserData(ctx context.Context, userData core.UpdateUserParams) error {
+func (s *ProfileService) UpdateUserData(ctx context.Context, userData core.UpdateUserParams) error {
 	err := s.userRepo.UpdateUser(ctx, userData)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -118,4 +118,7 @@ func (s ProfileService) UpdateUserData(ctx context.Context, userData core.Update
 		return pkg.ErrDbInternal
 	}
 	return nil
+}
+
+func (s *ProfileService) TranslatePosition() {
 }

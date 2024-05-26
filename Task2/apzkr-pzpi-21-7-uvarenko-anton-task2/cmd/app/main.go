@@ -11,6 +11,7 @@ import (
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/transport"
 
 	"github.com/joho/godotenv"
+	"github.com/olahol/melody"
 )
 
 func main() {
@@ -23,11 +24,13 @@ func main() {
 		*jwtHandler,
 		repo,
 	)
+	m := melody.New()
 	handler := transport.NewHandler(
 		service.AuthService,
 		service.ProfileService,
+		m,
 	)
 
-	s := server.New(handler, *jwtHandler)
+	s := server.New(handler, *jwtHandler, m)
 	s.ListenAndServe()
 }

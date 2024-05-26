@@ -8,6 +8,7 @@ import (
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/api"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type AuthHandler struct {
 type iAuthService interface {
 	RegisterUser(ctx context.Context, user core.CreateUserParams) (string, error)
 	Login(ctx context.Context, payload core.CreateUserParams) (string, error)
+	LoginPet(ctx context.Context, petId int64, ownerId int64) (string, error)
 }
 
 func NewAuthHandler(service iAuthService) *AuthHandler {
@@ -29,16 +31,16 @@ func NewAuthHandler(service iAuthService) *AuthHandler {
 
 func (h AuthHandler) RegisterUser(ctx *gin.Context) {
 	type RegisterPayload struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		UserType string `json:"user_type"`
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		UserType string `json:"userType" binding:"required"`
 	}
 
 	var payload RegisterPayload
 	err := ctx.ShouldBindJSON(&payload)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, pkg.ErrPayloadDecode)
+		ctx.AbortWithError(http.StatusBadRequest, pkg.ErrPayloadDecode)
 		return
 	}
 
@@ -50,20 +52,22 @@ func (h AuthHandler) RegisterUser(ctx *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, pkg.ErrEmailDuplicate) {
-			ctx.JSON(http.StatusConflict, err.Error())
+			ctx.AbortWithError(http.StatusConflict, err)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, err.Error())
+		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, token)
+	ctx.JSON(http.StatusOK, api.TokenResponse{
+		Token: token,
+	})
 }
 
 func (h AuthHandler) Login(ctx *gin.Context) {
 	type LoginPayload struct {
-		Email    string
-		Password string
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	var payload LoginPayload
 	err := ctx.ShouldBindJSON(&payload)
@@ -91,5 +95,37 @@ func (h AuthHandler) Login(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, token)
+	ctx.JSON(http.StatusOK, api.TokenResponse{
+		Token: token,
+	})
+}
+
+func (h AuthHandler) LoginPet(ctx *gin.Context) {
+	ownerId := ctx.GetInt64("user_id")
+	if ownerId == 0 {
+
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	type LoginPetPayload struct {
+		PetId int64 `json:"petId"`
+	}
+
+	var payload LoginPetPayload
+	err := ctx.ShouldBindJSON(&payload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.authService.LoginPet(ctx, payload.PetId, ownerId)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.TokenResponse{
+		Token: token,
+	})
 }

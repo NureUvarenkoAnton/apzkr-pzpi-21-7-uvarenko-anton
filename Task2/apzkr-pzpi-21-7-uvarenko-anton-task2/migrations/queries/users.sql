@@ -9,6 +9,13 @@ WHERE id = ?;
 SELECT * FROM users
 WHERE email = ?;
 
+-- name: GetUserByUserType :many
+SELECT * FROM users
+WHERE user_type = ?;
+
+-- name: GetAllUsers :many
+SELECT * FROM users;
+
 -- name: CreateUser :exec
 INSERT INTO users (name, email, password, user_type) VALUES(?, ?, ?, ?);
 

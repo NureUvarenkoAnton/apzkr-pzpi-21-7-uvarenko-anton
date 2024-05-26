@@ -9,16 +9,17 @@ import (
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/transport"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olahol/melody"
 )
 
-func New(handler *transport.Handler, jwtHandler jwt.JWT) *http.Server {
+func New(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) *http.Server {
 	return &http.Server{
 		Addr:    ":8080",
-		Handler: setUpRoutes(handler, jwtHandler),
+		Handler: setUpRoutes(handler, jwtHandler, melody),
 	}
 }
 
-func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT) *gin.Engine {
+func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
 
@@ -27,6 +28,15 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT) *gin.Engine {
 		authRouts.POST("/register", handler.AuthHandler.RegisterUser)
 		authRouts.POST("/login", handler.AuthHandler.Login)
 	}
+
+	wsOpenConnection := router.Group("/")
+	wsOpenConnection.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypePet, core.UsersUserTypeDefault, core.UsersUserTypeWalker}))
+	wsOpenConnection.GET("/ws", handler.PositionHandler.HandleOpenPetConnection)
+	melody.HandleMessage(handler.PositionHandler.HandleMessage)
+
+	loginPetRouter := router.Group("/")
+	loginPetRouter.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeDefault}))
+	loginPetRouter.POST("/loginpet", handler.AuthHandler.LoginPet)
 
 	profileRouts := router.Group("/profile")
 	profileRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{

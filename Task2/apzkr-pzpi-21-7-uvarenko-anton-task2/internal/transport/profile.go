@@ -10,15 +10,18 @@ import (
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olahol/melody"
 )
 
 type ProfileHandler struct {
 	profileService iUserProfileService
+	m              *melody.Melody
 }
 
-func NewProfileHandler(service iUserProfileService) *ProfileHandler {
+func NewProfileHandler(service iUserProfileService, melody *melody.Melody) *ProfileHandler {
 	return &ProfileHandler{
 		profileService: service,
+		m:              melody,
 	}
 }
 
@@ -34,7 +37,7 @@ func (h ProfileHandler) AddPet(ctx *gin.Context) {
 	type AddPetPayload struct {
 		Name           string `json:"name"`
 		Age            int    `json:"age"`
-		AdditionalInfo string `json:"additional_info"`
+		AdditionalInfo string `json:"additionalInfo"`
 	}
 
 	var payload AddPetPayload

@@ -51,23 +51,23 @@ func (j JWT) GenUserToken(id int64, userType core.UsersUserType, expiresAt time.
 	return tokenString, nil
 }
 
-func (j JWT) VerifyToken(tokneString string, allowedUsers []core.UsersUserType) (int64, error) {
+func (j JWT) VerifyToken(tokneString string, allowedUsers []core.UsersUserType) (*UserClaims, error) {
 	token, err := jwt.ParseWithClaims(tokneString, &UserClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return j.key, nil
 	})
 	if err != nil {
 		fmt.Println(err)
-		return 0, ErrInvalidSignature
+		return nil, ErrInvalidSignature
 	}
 
 	claims := token.Claims.(*UserClaims)
 	if !slices.Contains(allowedUsers, claims.UserType) {
-		return 0, ErrForbiden
+		return nil, ErrForbiden
 	}
 
 	if claims.ExpiresAt < time.Now().Unix() {
-		return 0, ErrTokenExpired
+		return nil, ErrTokenExpired
 	}
 
-	return claims.ID, nil
+	return claims, nil
 }

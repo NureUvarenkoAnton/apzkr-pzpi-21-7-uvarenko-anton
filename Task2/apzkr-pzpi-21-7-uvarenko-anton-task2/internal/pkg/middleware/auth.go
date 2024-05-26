@@ -21,7 +21,7 @@ func TokenVerifier(jwtHandler jwt.JWT, userTypesAllowed []core.UsersUserType) gi
 			return
 		}
 
-		id, err := jwtHandler.VerifyToken(rawToken[1], userTypesAllowed)
+		claims, err := jwtHandler.VerifyToken(rawToken[1], userTypesAllowed)
 		if err != nil {
 			fmt.Println(err)
 			if errors.Is(err, pkg.ErrForbiden) {
@@ -33,7 +33,8 @@ func TokenVerifier(jwtHandler jwt.JWT, userTypesAllowed []core.UsersUserType) gi
 			return
 		}
 
-		ctx.Set("user_id", id)
+		ctx.Set("user_id", claims.ID)
+		ctx.Set("user_type", string(claims.UserType))
 
 		ctx.Next()
 	}

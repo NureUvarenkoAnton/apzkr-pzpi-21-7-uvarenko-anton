@@ -14,10 +14,11 @@ var ErrPayloadDecode = errors.New("can't decode payload")
 
 // db erorrs
 var (
-	ErrDbInternal     = errors.New("db intenrnal error")
-	ErrEmailDuplicate = errors.New("email is already taken")
-	ErrRetrievingUser = errors.New("can't retrieve user")
-	ErrNotFound       = errors.New("entity does not exist")
+	ErrDbInternal      = errors.New("db intenrnal error")
+	ErrEmailDuplicate  = errors.New("email is already taken")
+	ErrRetrievingUser  = errors.New("can't retrieve user")
+	ErrNotFound        = errors.New("entity does not exist")
+	ErrEntityDuplicate = errors.New("entity already exists")
 )
 
 // service errors

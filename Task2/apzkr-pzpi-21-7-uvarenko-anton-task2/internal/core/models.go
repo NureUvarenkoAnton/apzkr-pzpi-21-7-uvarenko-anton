@@ -107,12 +107,20 @@ type Pet struct {
 	AdditionalInfo sql.NullString
 }
 
+type Rating struct {
+	RaterID sql.NullInt32
+	RateeID sql.NullInt32
+	Value   sql.NullInt32
+}
+
 type User struct {
-	ID       int64
-	Name     sql.NullString
-	Email    sql.NullString
-	Password sql.NullString
-	UserType NullUsersUserType
+	ID        int64
+	Name      sql.NullString
+	Email     sql.NullString
+	Password  sql.NullString
+	UserType  NullUsersUserType
+	IsBanned  sql.NullBool
+	IsDeleted sql.NullBool
 }
 
 type Walk struct {

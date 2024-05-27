@@ -26,3 +26,13 @@ SET
   email = ?
 WHERE
   id = ?;
+
+-- name: DeleteUser :exec
+UPDATE users
+SET is_deleted = true
+WHERE id = ?;
+
+-- name: SetBanState :exec
+UPDATE users
+SET is_banned = ?
+WHERE id = ?;

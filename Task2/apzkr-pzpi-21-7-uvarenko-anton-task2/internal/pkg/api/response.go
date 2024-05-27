@@ -9,3 +9,7 @@ type ResponseWSMessage struct {
 	Error string `json:"error"`
 	Data  any    `json:"data"`
 }
+
+type AvgRatingResponse struct {
+	AvgRating int `json:"avgRating"`
+}

@@ -1,4 +1,4 @@
-CREATE TABLE walks (
+CREATE TABLE IF NOT EXISTS walks (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   owner_id BIGINT REFERENCES users(id),
   walker_id BIGINT REFERENCES users(id),

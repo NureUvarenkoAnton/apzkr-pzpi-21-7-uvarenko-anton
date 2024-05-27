@@ -10,9 +10,9 @@ type Service struct {
 }
 
 func NewService(
-	authRepo iAuthUserRepo,
+	authRepo iAuthRepo,
 	jwtHandler jwt.JWT,
-	profileRepo iProfileUserRepo,
+	profileRepo iProfileRepo,
 ) *Service {
 	return &Service{
 		AuthService:    NewAuthService(authRepo, jwtHandler),

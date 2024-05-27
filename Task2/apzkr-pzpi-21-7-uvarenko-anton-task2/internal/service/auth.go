@@ -16,19 +16,19 @@ import (
 )
 
 type AuthService struct {
-	userRepo   iAuthUserRepo
+	userRepo   iAuthRepo
 	jwtHandler jwt.JWT
 }
 
 const tokenTimeToLive = time.Hour * 24 * 7
 
-type iAuthUserRepo interface {
+type iAuthRepo interface {
 	CreateUser(ctx context.Context, arg core.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email sql.NullString) (core.User, error)
 	GetPetById(ctx context.Context, id int64) (core.Pet, error)
 }
 
-func NewAuthService(repo iAuthUserRepo, jwtHandler jwt.JWT) *AuthService {
+func NewAuthService(repo iAuthRepo, jwtHandler jwt.JWT) *AuthService {
 	return &AuthService{
 		userRepo:   repo,
 		jwtHandler: jwtHandler,

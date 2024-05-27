@@ -12,16 +12,16 @@ import (
 )
 
 type ProfileService struct {
-	userRepo iProfileUserRepo
+	userRepo iProfileRepo
 }
 
-func NewProfileService(userRepo iProfileUserRepo) *ProfileService {
+func NewProfileService(userRepo iProfileRepo) *ProfileService {
 	return &ProfileService{
 		userRepo: userRepo,
 	}
 }
 
-type iProfileUserRepo interface {
+type iProfileRepo interface {
 	GetPetById(ctx context.Context, id int64) (core.Pet, error)
 	UpdatePet(ctx context.Context, arg core.UpdatePetParams) error
 	GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error)

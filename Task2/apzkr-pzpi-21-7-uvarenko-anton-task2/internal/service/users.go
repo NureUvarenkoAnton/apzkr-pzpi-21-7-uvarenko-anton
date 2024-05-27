@@ -11,16 +11,16 @@ import (
 )
 
 type UserService struct {
-	userRepo iUserUserRepo
+	userRepo iUsersRepo
 }
 
-func NewUserService(userRepo iUserUserRepo) *UserService {
+func NewUserService(userRepo iUsersRepo) *UserService {
 	return &UserService{
 		userRepo: userRepo,
 	}
 }
 
-type iUserUserRepo interface {
+type iUsersRepo interface {
 	GetAllUsers(ctx context.Context) ([]core.User, error)
 	GetUserByUserType(ctx context.Context, userType core.NullUsersUserType) ([]core.User, error)
 }

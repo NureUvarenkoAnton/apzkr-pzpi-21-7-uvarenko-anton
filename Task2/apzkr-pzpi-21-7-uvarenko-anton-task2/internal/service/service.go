@@ -7,15 +7,21 @@ import (
 type Service struct {
 	AuthService    *AuthService
 	ProfileService *ProfileService
+	UsersService   *UserService
+	WalkService    *WalkService
 }
 
 func NewService(
 	authRepo iAuthRepo,
 	jwtHandler jwt.JWT,
 	profileRepo iProfileRepo,
+	usersRepo iUsersRepo,
+	walkRepo iWalkRepo,
 ) *Service {
 	return &Service{
 		AuthService:    NewAuthService(authRepo, jwtHandler),
 		ProfileService: NewProfileService(profileRepo),
+		UsersService:   NewUserService(usersRepo),
+		WalkService:    NewWalkService(walkRepo),
 	}
 }

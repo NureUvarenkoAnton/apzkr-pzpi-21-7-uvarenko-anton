@@ -14,16 +14,16 @@ import (
 )
 
 type WalkHalder struct {
-	walkService walkService
+	walkService iWalkService
 }
 
-func NewWalkHandler(walkService walkService) *WalkHalder {
+func NewWalkHandler(walkService iWalkService) *WalkHalder {
 	return &WalkHalder{
 		walkService: walkService,
 	}
 }
 
-type walkService interface {
+type iWalkService interface {
 	CreateWalk(ctx context.Context, walkParams core.CreateWalkParams) error
 	GetWalksByWalkerId(ctx context.Context, walkerID sql.NullInt64) ([]core.Walk, error)
 	GetWalksByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Walk, error)

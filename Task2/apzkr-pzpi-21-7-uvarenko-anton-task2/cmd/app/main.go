@@ -23,12 +23,16 @@ func main() {
 		repo,
 		*jwtHandler,
 		repo,
+		repo,
+		repo,
 	)
 	m := melody.New()
 	handler := transport.NewHandler(
 		service.AuthService,
 		service.ProfileService,
 		m,
+		service.UsersService,
+		service.WalkService,
 	)
 
 	s := server.New(handler, *jwtHandler, m)

@@ -117,48 +117,32 @@ func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
-const getUserByUserType = `-- name: GetUserByUserType :many
-SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
-WHERE user_type = ?
-`
-
-func (q *Queries) GetUserByUserType(ctx context.Context, userType NullUsersUserType) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, getUserByUserType, userType)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []User
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Email,
-			&i.Password,
-			&i.UserType,
-			&i.IsBanned,
-			&i.IsDeleted,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getUsers = `-- name: GetUsers :many
 SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
+WHERE 
+  id = ? OR
+  name = ? OR 
+  user_type = ? OR
+  is_banned = ? OR
+  is_deleted = ?
 `
 
-func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, getUsers)
+type GetUsersParams struct {
+	ID        int64
+	Name      sql.NullString
+	UserType  NullUsersUserType
+	IsBanned  sql.NullBool
+	IsDeleted sql.NullBool
+}
+
+func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getUsers,
+		arg.ID,
+		arg.Name,
+		arg.UserType,
+		arg.IsBanned,
+		arg.IsDeleted,
+	)
 	if err != nil {
 		return nil, err
 	}

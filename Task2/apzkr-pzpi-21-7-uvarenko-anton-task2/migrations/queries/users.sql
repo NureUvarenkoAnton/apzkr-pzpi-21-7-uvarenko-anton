@@ -1,6 +1,3 @@
--- name: GetUsers :many
-SELECT * FROM users;
-
 -- name: GetUserById :one
 SELECT * FROM users
 WHERE id = ?;
@@ -9,9 +6,14 @@ WHERE id = ?;
 SELECT * FROM users
 WHERE email = ?;
 
--- name: GetUserByUserType :many
+-- name: GetUsers :many
 SELECT * FROM users
-WHERE user_type = ?;
+WHERE 
+  id = ? OR
+  name = ? OR 
+  user_type = ? OR
+  is_banned = ? OR
+  is_deleted = ?;
 
 -- name: GetAllUsers :many
 SELECT * FROM users;

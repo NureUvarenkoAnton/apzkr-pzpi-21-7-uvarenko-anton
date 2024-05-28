@@ -51,5 +51,31 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 		profileRouts.PUT("/user", handler.ProfileHandler.UpdateUser)
 	}
 
+	usersDefaultRouts := router.Group("/users")
+	usersDefaultRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{
+		core.UsersUserTypeAdmin,
+		core.UsersUserTypeDefault,
+		core.UsersUserTypeWalker,
+	}))
+	{
+		usersDefaultRouts.GET("/", handler.UserHandler.GetUsers)
+	}
+
+	userAdminRouts := router.Group("/users")
+	userAdminRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeAdmin}))
+	{
+		userAdminRouts.PUT("/ban", handler.UserHandler.SetBanState)
+	}
+
+	walkRouts := router.Group("/walk")
+	walkRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{
+		core.UsersUserTypeAdmin,
+		core.UsersUserTypeWalker,
+		core.UsersUserTypeDefault,
+	}))
+	{
+		walkRouts.POST("/")
+	}
+
 	return router
 }

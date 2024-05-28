@@ -119,6 +119,3 @@ func (s *ProfileService) UpdateUserData(ctx context.Context, userData core.Updat
 	}
 	return nil
 }
-
-func (s *ProfileService) TranslatePosition() {
-}

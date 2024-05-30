@@ -27,15 +27,14 @@ type iRatingService interface {
 	GetRatingByIds(ctx context.Context, ids core.RatingByIdsParams) (core.Rating, error)
 	GetRatingByRateeId(ctx context.Context, rateeId sql.NullInt32) ([]core.Rating, error)
 	GetRatingByRaterId(ctx context.Context, raterId sql.NullInt32) ([]core.Rating, error)
-	AddRating(ctx context.Context, params core.AddRatingParams) error
+	AddRating(ctx context.Context, params core.AddRatingParams, userType core.UsersUserType) error
 	GetAvgRating(ctx context.Context, rateeId int) (int, error)
 }
 
 func (h *RatingHandler) AddRating(ctx *gin.Context) {
 	type AddRatingPayload struct {
-		RaterId int `json:"raterId" binding:"required"`
 		RateeId int `json:"rateeId" binding:"required"`
-		Value   int `json:"value" binding:"required,lse=10,gt=0"`
+		Value   int `json:"value" binding:"required"`
 	}
 	var payload AddRatingPayload
 	err := ctx.ShouldBindJSON(&payload)
@@ -44,14 +43,22 @@ func (h *RatingHandler) AddRating(ctx *gin.Context) {
 		return
 	}
 
+	raterId := ctx.GetInt64("user_id")
+	userType := core.UsersUserType(ctx.GetString("user_type"))
+
 	err = h.ratingService.AddRating(ctx, core.AddRatingParams{
-		RaterID: sql.NullInt32{Int32: int32(payload.RaterId), Valid: true},
+		RaterID: sql.NullInt32{Int32: int32(raterId), Valid: true},
 		RateeID: sql.NullInt32{Int32: int32(payload.RateeId), Valid: true},
 		Value:   sql.NullInt32{Int32: int32(payload.Value), Valid: true},
-	})
+	}, userType)
 	if err != nil {
 		if errors.Is(err, pkg.ErrEntityDuplicate) {
 			ctx.AbortWithStatus(http.StatusConflict)
+			return
+		}
+
+		if errors.Is(err, pkg.ErrForbiden) {
+			ctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 

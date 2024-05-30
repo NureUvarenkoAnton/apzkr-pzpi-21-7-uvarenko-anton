@@ -9,11 +9,9 @@ WHERE email = ?;
 -- name: GetUsers :many
 SELECT * FROM users
 WHERE 
-  id = ? OR
-  name = ? OR 
-  user_type = ? OR
-  is_banned = ? OR
-  is_deleted = ?;
+(sqlc.narg(user_type) is NULL OR user_type = sqlc.narg(user_type)) AND
+(sqlc.narg(is_banned) is NULL OR is_banned = sqlc.narg(is_banned)) AND
+(sqlc.narg(is_deleted) is NULL OR is_deleted = sqlc.narg(is_deleted));
 
 -- name: GetAllUsers :many
 SELECT * FROM users;

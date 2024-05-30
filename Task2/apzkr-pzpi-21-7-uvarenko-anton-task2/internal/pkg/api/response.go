@@ -29,6 +29,7 @@ type UserResponse struct {
 
 type WalkInfoResponse struct {
 	WalkId      int64  `json:"walkId,omitempty"`
+	WalkState   string `json:"walkState,omitempty"`
 	StartTime   string `json:"startTime,omitempty"`
 	FinishTime  string `json:"finishTime,omitempty"`
 	OwnerId     int64  `json:"ownerId,omitempty"`

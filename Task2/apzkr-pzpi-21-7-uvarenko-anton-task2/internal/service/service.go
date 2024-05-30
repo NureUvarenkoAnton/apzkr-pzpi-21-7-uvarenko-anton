@@ -9,6 +9,7 @@ type Service struct {
 	ProfileService *ProfileService
 	UsersService   *UserService
 	WalkService    *WalkService
+	RatingService  *RatingService
 }
 
 func NewService(
@@ -17,11 +18,13 @@ func NewService(
 	profileRepo iProfileRepo,
 	usersRepo iUsersRepo,
 	walkRepo iWalkRepo,
+	ratingRepo iRatingRepo,
 ) *Service {
 	return &Service{
 		AuthService:    NewAuthService(authRepo, jwtHandler),
 		ProfileService: NewProfileService(profileRepo),
 		UsersService:   NewUserService(usersRepo),
 		WalkService:    NewWalkService(walkRepo),
+		RatingService:  NewRatingSrvice(ratingRepo),
 	}
 }

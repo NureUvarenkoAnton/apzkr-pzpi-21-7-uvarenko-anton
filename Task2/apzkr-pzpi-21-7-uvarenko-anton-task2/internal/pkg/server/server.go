@@ -58,13 +58,15 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 		core.UsersUserTypeWalker,
 	}))
 	{
-		usersDefaultRouts.GET("/", handler.UserHandler.GetUsers)
+		usersDefaultRouts.GET("/walkers", handler.UserHandler.GetWalkers)
+		usersDefaultRouts.GET("/:id", handler.UserHandler.GetUserById)
 	}
 
-	userAdminRouts := router.Group("/users")
+	userAdminRouts := router.Group("/users/admin")
 	userAdminRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeAdmin}))
 	{
 		userAdminRouts.PUT("/ban", handler.UserHandler.SetBanState)
+		usersDefaultRouts.GET("/", handler.UserHandler.GetUsersAdmin)
 	}
 
 	walkRouts := router.Group("/walk")
@@ -79,6 +81,12 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 		walkRouts.GET("/", handler.WalkHalder.GetWalksByParams)
 		walkRouts.GET("/:id", handler.WalkHalder.GetWalkInfoById)
 		walkRouts.GET("/self", handler.WalkHalder.GetWalksBySelfId)
+	}
+
+	ratingRouts := router.Group("/rating")
+	ratingRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeWalker, core.UsersUserTypeDefault}))
+	{
+		ratingRouts.POST("/", handler.RatingHandler.AddRating)
 	}
 
 	return router

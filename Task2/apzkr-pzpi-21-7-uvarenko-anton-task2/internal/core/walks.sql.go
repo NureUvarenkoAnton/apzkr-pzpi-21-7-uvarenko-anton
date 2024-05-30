@@ -131,6 +131,48 @@ func (q *Queries) GetWalkInfoByWalkId(ctx context.Context, walkID int64) (WalkIn
 	return i, err
 }
 
+const getWalksByOwnerAndWalkerIds = `-- name: GetWalksByOwnerAndWalkerIds :many
+SELECT id, owner_id, walker_id, pet_id, start_time, finish_time, state FROM walks
+WHERE walker_id = ? AND 
+      owner_id = ?
+`
+
+type GetWalksByOwnerAndWalkerIdsParams struct {
+	WalkerID sql.NullInt64
+	OwnerID  sql.NullInt64
+}
+
+func (q *Queries) GetWalksByOwnerAndWalkerIds(ctx context.Context, arg GetWalksByOwnerAndWalkerIdsParams) ([]Walk, error) {
+	rows, err := q.db.QueryContext(ctx, getWalksByOwnerAndWalkerIds, arg.WalkerID, arg.OwnerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Walk
+	for rows.Next() {
+		var i Walk
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.WalkerID,
+			&i.PetID,
+			&i.StartTime,
+			&i.FinishTime,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWalksByOwnerId = `-- name: GetWalksByOwnerId :many
 SELECT id, owner_id, walker_id, pet_id, start_time, finish_time, state FROM walks
 WHERE owner_id = ?
@@ -138,6 +180,62 @@ WHERE owner_id = ?
 
 func (q *Queries) GetWalksByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]Walk, error) {
 	rows, err := q.db.QueryContext(ctx, getWalksByOwnerId, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Walk
+	for rows.Next() {
+		var i Walk
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.WalkerID,
+			&i.PetID,
+			&i.StartTime,
+			&i.FinishTime,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWalksByParams = `-- name: GetWalksByParams :many
+SELECT id, owner_id, walker_id, pet_id, start_time, finish_time, state FROM walks
+WHERE
+(? IS NULL OR owner_id = ?) AND
+(? IS NULL OR walker_id = ?) AND
+(? IS NULL OR pet_id = ?) AND
+(? IS NULL OR state = ?)
+`
+
+type GetWalksByParamsParams struct {
+	OwnerID   sql.NullInt64
+	WalkerID  sql.NullInt64
+	PetID     sql.NullInt64
+	WalkState NullWalksState
+}
+
+func (q *Queries) GetWalksByParams(ctx context.Context, arg GetWalksByParamsParams) ([]Walk, error) {
+	rows, err := q.db.QueryContext(ctx, getWalksByParams,
+		arg.OwnerID,
+		arg.OwnerID,
+		arg.WalkerID,
+		arg.WalkerID,
+		arg.PetID,
+		arg.PetID,
+		arg.WalkState,
+		arg.WalkState,
+	)
 	if err != nil {
 		return nil, err
 	}

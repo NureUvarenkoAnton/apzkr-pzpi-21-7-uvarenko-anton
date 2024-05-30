@@ -23,14 +23,40 @@ func NewRatingSrvice(ratingRepo iRatingRepo) *RatingService {
 }
 
 type iRatingRepo interface {
+	GetWalksByParams(ctx context.Context, arg core.GetWalksByParamsParams) ([]core.Walk, error)
 	AddRating(ctx context.Context, arg core.AddRatingParams) error
 	RatingByIds(ctx context.Context, arg core.RatingByIdsParams) (core.Rating, error)
 	RatingsByRaterId(ctx context.Context, raterID sql.NullInt32) ([]core.Rating, error)
 	RatingsByRateeId(ctx context.Context, rateeID sql.NullInt32) ([]core.Rating, error)
 }
 
-func (s *RatingService) AddRating(ctx context.Context, params core.AddRatingParams) error {
-	err := s.ratingRepo.AddRating(ctx, params)
+func (s *RatingService) AddRating(ctx context.Context, params core.AddRatingParams, userType core.UsersUserType) error {
+	getWalkParams := core.GetWalksByParamsParams{
+		WalkState: core.NullWalksState{WalksState: core.WalksStateFinished, Valid: true},
+	}
+	if userType == core.UsersUserTypeWalker {
+		getWalkParams.WalkerID = sql.NullInt64{Int64: int64(params.RaterID.Int32), Valid: true}
+		getWalkParams.OwnerID = sql.NullInt64{Int64: int64(params.RateeID.Int32), Valid: true}
+	}
+
+	if userType == core.UsersUserTypeDefault {
+		getWalkParams.OwnerID = sql.NullInt64{Int64: int64(params.RaterID.Int32), Valid: true}
+		getWalkParams.WalkerID = sql.NullInt64{Int64: int64(params.RateeID.Int32), Valid: true}
+	}
+	walks, err := s.ratingRepo.GetWalksByParams(ctx, getWalkParams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrForbiden
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: %w", pkg.ErrDbInternal, err)
+	}
+	if len(walks) == 0 {
+		return pkg.ErrForbiden
+	}
+
+	err = s.ratingRepo.AddRating(ctx, params)
 	if err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) {

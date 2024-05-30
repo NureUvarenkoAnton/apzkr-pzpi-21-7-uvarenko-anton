@@ -8,6 +8,7 @@ type Handler struct {
 	PositionHandler *PositionHandler
 	UserHandler     *UserHandler
 	WalkHalder      *WalkHalder
+	RatingHandler   *RatingHandler
 }
 
 func NewHandler(
@@ -16,6 +17,7 @@ func NewHandler(
 	melody *melody.Melody,
 	userService iUserService,
 	walkService iWalkService,
+	ratingService iRatingService,
 ) *Handler {
 	return &Handler{
 		AuthHandler:     NewAuthHandler(authService),
@@ -23,5 +25,6 @@ func NewHandler(
 		PositionHandler: NewPositionHandler(melody, profileService),
 		UserHandler:     NewUserHandler(userService),
 		WalkHalder:      NewWalkHandler(walkService),
+		RatingHandler:   NewRatingHandler(ratingService),
 	}
 }

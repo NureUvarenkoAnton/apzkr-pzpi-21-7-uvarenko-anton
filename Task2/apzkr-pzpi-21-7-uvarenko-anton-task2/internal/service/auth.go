@@ -55,14 +55,14 @@ func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParam
 
 	err = s.userRepo.CreateUser(ctx, user)
 	if err != nil {
-		err, ok := err.(*mysql.MySQLError)
-		if !ok {
-			return "", err
-		}
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) {
+			err := err.(*mysql.MySQLError)
+			// duplicate entry
+			if err.Number == 1062 {
+				return "", pkg.ErrEmailDuplicate
+			}
 
-		// duplicate entry
-		if err.Number == 1062 {
-			return "", pkg.ErrEmailDuplicate
 		}
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
@@ -86,13 +86,7 @@ func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParam
 func (s AuthService) Login(ctx context.Context, payload core.CreateUserParams) (string, error) {
 	user, err := s.userRepo.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
-		err, ok := err.(*mysql.MySQLError)
-		if !ok {
-			return "", err
-		}
-
-		// not found
-		if err.Number == 1339 {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", pkg.ErrNotFound
 		}
 

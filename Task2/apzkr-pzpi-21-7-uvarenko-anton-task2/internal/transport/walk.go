@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
@@ -69,6 +70,11 @@ func (h *WalkHalder) CreateWalkRequest(ctx *gin.Context) {
 		StartTime: sql.NullTime{Time: startTime, Valid: true},
 	})
 	if err != nil {
+		if errors.Is(err, pkg.ErrNotFound) {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -137,13 +143,35 @@ func (h *WalkHalder) GetWalkInfoById(ctx *gin.Context) {
 }
 
 func (h *WalkHalder) GetWalksBySelfId(ctx *gin.Context) {
+	type QueryParams struct {
+		WalksState string `form:"walkState"`
+	}
+	var requestPayload QueryParams
+	err := ctx.BindQuery(&requestPayload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if requestPayload.WalksState != "" {
+		if !slices.Contains([]core.WalksState{
+			core.WalksStatePending,
+			core.WalksStateAccepted,
+			core.WalksStateDeclined,
+			core.WalksStateInProccess,
+			core.WalksStateFinished,
+		}, core.WalksState(requestPayload.WalksState)) {
+			ctx.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+	}
+
 	id := ctx.GetInt64("user_id")
 	if id == 0 {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	fmt.Println("id is: ", id)
 	userType := core.UsersUserType(ctx.GetString("user_type"))
 	fmt.Println("userType: ", userType)
 	if userType != core.UsersUserTypeWalker &&

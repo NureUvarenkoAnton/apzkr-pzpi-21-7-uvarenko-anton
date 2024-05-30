@@ -34,6 +34,7 @@ func DbWalkInfoToAPIWalkInfo(walkInfo core.WalkInfo) WalkInfoResponse {
 		WalkerEmail: walkInfo.WalkerEmail.String,
 		PetId:       walkInfo.PetID,
 		PetName:     walkInfo.PetName.String,
+		WalkState:   string(walkInfo.State.WalksState),
 	}
 
 	if walkInfo.StartTime.Valid {

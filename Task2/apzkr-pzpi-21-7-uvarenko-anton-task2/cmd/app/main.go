@@ -25,6 +25,7 @@ func main() {
 		repo,
 		repo,
 		repo,
+		repo,
 	)
 	m := melody.New()
 	handler := transport.NewHandler(
@@ -33,6 +34,7 @@ func main() {
 		m,
 		service.UsersService,
 		service.WalkService,
+		service.RatingService,
 	)
 
 	s := server.New(handler, *jwtHandler, m)

@@ -120,16 +120,12 @@ func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 const getUsers = `-- name: GetUsers :many
 SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
 WHERE 
-  id = ? OR
-  name = ? OR 
-  user_type = ? OR
-  is_banned = ? OR
-  is_deleted = ?
+(? is NULL OR user_type = ?) AND
+(? is NULL OR is_banned = ?) AND
+(? is NULL OR is_deleted = ?)
 `
 
 type GetUsersParams struct {
-	ID        int64
-	Name      sql.NullString
 	UserType  NullUsersUserType
 	IsBanned  sql.NullBool
 	IsDeleted sql.NullBool
@@ -137,10 +133,11 @@ type GetUsersParams struct {
 
 func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]User, error) {
 	rows, err := q.db.QueryContext(ctx, getUsers,
-		arg.ID,
-		arg.Name,
+		arg.UserType,
 		arg.UserType,
 		arg.IsBanned,
+		arg.IsBanned,
+		arg.IsDeleted,
 		arg.IsDeleted,
 	)
 	if err != nil {

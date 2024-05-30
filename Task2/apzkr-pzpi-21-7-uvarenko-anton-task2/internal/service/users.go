@@ -41,11 +41,30 @@ func (s *UserService) GetAllUsers(ctx context.Context) ([]core.User, error) {
 	return users, nil
 }
 
+func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (core.User, error) {
+	user, err := s.userRepo.GetUsers(ctx, core.GetUsersParams{
+		IsBanned:  sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
+		IsDeleted: sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return core.User{}, pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return core.User{}, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	if requesterType == core.UsersUserTypeDefault && user[0].UserType.UsersUserType != core.UsersUserTypeWalker {
+		return core.User{}, pkg.ErrForbiden
+	}
+
+	return user[0], nil
+}
+
 func (s *UserService) GetUsers(ctx context.Context, params core.GetUsersParams) ([]core.User, error) {
 	// if no paramters provided, then return all users
-	if params.ID == 0 &&
-		!params.Name.Valid &&
-		!params.IsBanned.Valid &&
+	if !params.IsBanned.Valid &&
 		!params.UserType.Valid &&
 		!params.IsDeleted.Valid {
 

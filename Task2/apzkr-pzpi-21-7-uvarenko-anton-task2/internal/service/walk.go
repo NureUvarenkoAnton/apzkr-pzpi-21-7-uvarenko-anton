@@ -23,6 +23,8 @@ func NewWalkService(walkRepo iWalkRepo) *WalkService {
 }
 
 type iWalkRepo interface {
+	GetPetById(ctx context.Context, id int64) (core.Pet, error)
+	GetUserById(ctx context.Context, id int64) (core.User, error)
 	CreateWalk(ctx context.Context, arg core.CreateWalkParams) error
 	GetWalksByWalkerId(ctx context.Context, walkerID sql.NullInt64) ([]core.Walk, error)
 	UpdateWalkState(ctx context.Context, arg core.UpdateWalkStateParams) error
@@ -33,7 +35,33 @@ type iWalkRepo interface {
 }
 
 func (s *WalkService) CreateWalk(ctx context.Context, walkParams core.CreateWalkParams) error {
-	err := s.walkRepo.CreateWalk(ctx, walkParams)
+	walker, err := s.walkRepo.GetUserById(ctx, walkParams.WalkerID.Int64)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	fmt.Println("result: ", walker)
+
+	if walker.UserType.UsersUserType != core.UsersUserTypeWalker {
+		return pkg.ErrNotFound
+	}
+
+	_, err = s.walkRepo.GetPetById(ctx, walkParams.PetID.Int64)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	err = s.walkRepo.CreateWalk(ctx, walkParams)
 	if err != nil {
 		err, ok := err.(*mysql.MySQLError)
 		if !ok {

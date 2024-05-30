@@ -34,6 +34,103 @@ func (q *Queries) CreateWalk(ctx context.Context, arg CreateWalkParams) error {
 	return err
 }
 
+const getWalkById = `-- name: GetWalkById :one
+SELECT id, owner_id, walker_id, pet_id, start_time, finish_time, state FROM walks
+WHERE id = ?
+`
+
+func (q *Queries) GetWalkById(ctx context.Context, id int64) (Walk, error) {
+	row := q.db.QueryRowContext(ctx, getWalkById, id)
+	var i Walk
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.WalkerID,
+		&i.PetID,
+		&i.StartTime,
+		&i.FinishTime,
+		&i.State,
+	)
+	return i, err
+}
+
+const getWalkInfoByParams = `-- name: GetWalkInfoByParams :many
+SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age FROM walk_info
+WHERE
+  owner_id = ? OR
+  walker_id = ? OR
+  pet_id = ?
+`
+
+type GetWalkInfoByParamsParams struct {
+	OwnerID  sql.NullInt64
+	WalkerID sql.NullInt64
+	PetID    sql.NullInt64
+}
+
+func (q *Queries) GetWalkInfoByParams(ctx context.Context, arg GetWalkInfoByParamsParams) ([]WalkInfo, error) {
+	rows, err := q.db.QueryContext(ctx, getWalkInfoByParams, arg.OwnerID, arg.WalkerID, arg.PetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WalkInfo
+	for rows.Next() {
+		var i WalkInfo
+		if err := rows.Scan(
+			&i.WalkID,
+			&i.StartTime,
+			&i.FinishTime,
+			&i.State,
+			&i.OwnerID,
+			&i.OwnerName,
+			&i.OwnerEmail,
+			&i.WalkerID,
+			&i.WalkerName,
+			&i.WalkerEmail,
+			&i.PetID,
+			&i.PetName,
+			&i.PetAge,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWalkInfoByWalkId = `-- name: GetWalkInfoByWalkId :one
+SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age FROM walk_info
+WHERE walk_id = ?
+`
+
+func (q *Queries) GetWalkInfoByWalkId(ctx context.Context, walkID int64) (WalkInfo, error) {
+	row := q.db.QueryRowContext(ctx, getWalkInfoByWalkId, walkID)
+	var i WalkInfo
+	err := row.Scan(
+		&i.WalkID,
+		&i.StartTime,
+		&i.FinishTime,
+		&i.State,
+		&i.OwnerID,
+		&i.OwnerName,
+		&i.OwnerEmail,
+		&i.WalkerID,
+		&i.WalkerName,
+		&i.WalkerEmail,
+		&i.PetID,
+		&i.PetName,
+		&i.PetAge,
+	)
+	return i, err
+}
+
 const getWalksByOwnerId = `-- name: GetWalksByOwnerId :many
 SELECT id, owner_id, walker_id, pet_id, start_time, finish_time, state FROM walks
 WHERE owner_id = ?
@@ -109,17 +206,19 @@ func (q *Queries) GetWalksByWalkerId(ctx context.Context, walkerID sql.NullInt64
 const updateWalkState = `-- name: UpdateWalkState :exec
 UPDATE walks
 SET 
-  state = ?
+  state = ?,
+  finish_time = ?
 WHERE
   id = ?
 `
 
 type UpdateWalkStateParams struct {
-	State NullWalksState
-	ID    int64
+	State      NullWalksState
+	FinishTime sql.NullTime
+	ID         int64
 }
 
 func (q *Queries) UpdateWalkState(ctx context.Context, arg UpdateWalkStateParams) error {
-	_, err := q.db.ExecContext(ctx, updateWalkState, arg.State, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateWalkState, arg.State, arg.FinishTime, arg.ID)
 	return err
 }

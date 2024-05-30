@@ -132,3 +132,19 @@ type Walk struct {
 	FinishTime sql.NullTime
 	State      NullWalksState
 }
+
+type WalkInfo struct {
+	WalkID      int64
+	StartTime   sql.NullTime
+	FinishTime  sql.NullTime
+	State       NullWalksState
+	OwnerID     int64
+	OwnerName   sql.NullString
+	OwnerEmail  sql.NullString
+	WalkerID    int64
+	WalkerName  sql.NullString
+	WalkerEmail sql.NullString
+	PetID       int64
+	PetName     sql.NullString
+	PetAge      sql.NullInt16
+}

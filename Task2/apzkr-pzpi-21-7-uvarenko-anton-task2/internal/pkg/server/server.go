@@ -74,7 +74,11 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 		core.UsersUserTypeDefault,
 	}))
 	{
-		walkRouts.POST("/")
+		walkRouts.POST("/", handler.WalkHalder.CreateWalkRequest)
+		walkRouts.PUT("/", handler.WalkHalder.UpdateWalkState)
+		walkRouts.GET("/", handler.WalkHalder.GetWalksByParams)
+		walkRouts.GET("/:id", handler.WalkHalder.GetWalkInfoById)
+		walkRouts.GET("/self", handler.WalkHalder.GetWalksBySelfId)
 	}
 
 	return router

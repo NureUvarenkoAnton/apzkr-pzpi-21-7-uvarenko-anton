@@ -21,7 +21,7 @@ import (
 )
 
 func TestWalkHalder_CreateWalkRequest(t *testing.T) {
-	mockWalkService := new(mockWalkService)
+	mockWalkService := new(mockIWalkService)
 	handler := NewWalkHandler(mockWalkService)
 	jwtHandler := jwt.NewJWT("abc")
 
@@ -81,12 +81,12 @@ func TestWalkHalder_CreateWalkRequest(t *testing.T) {
 }
 
 func TestWalkHalder_GetWalksByWalkerId(t *testing.T) {
-	mockWalkService := new(mockWalkService)
+	mockWalkService := new(mockIWalkService)
 	handler := NewWalkHandler(mockWalkService)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.GET("/walks/walker/:walkerId", handler.GetWalksByWalkerId)
+	r.GET("/walks/walker/:walkerId", handler.GetWalksByParams)
 
 	jwtHandler := jwt.NewJWT("abc")
 	token, _ := jwtHandler.GenUserToken(1, core.UsersUserTypeAdmin, time.Now().Add(time.Hour))
@@ -123,7 +123,7 @@ func TestWalkHalder_GetWalksByWalkerId(t *testing.T) {
 }
 
 func TestWalkHalder_GetWalksByOwnerId(t *testing.T) {
-	mockWalkService := new(mockWalkService)
+	mockWalkService := new(mockIWalkService)
 	handler := NewWalkHandler(mockWalkService)
 
 	gin.SetMode(gin.TestMode)
@@ -160,7 +160,7 @@ func TestWalkHalder_GetWalksByOwnerId(t *testing.T) {
 }
 
 func TestWalkHalder_UpdateWalkState(t *testing.T) {
-	mockWalkService := new(mockWalkService)
+	mockWalkService := new(mockIWalkService)
 	handler := NewWalkHandler(mockWalkService)
 
 	gin.SetMode(gin.TestMode)

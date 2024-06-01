@@ -8,6 +8,8 @@ import (
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/api"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/statistics"
 )
 
 type UserService struct {
@@ -26,9 +28,10 @@ type iUsersRepo interface {
 	DeleteUser(ctx context.Context, id int64) error
 	GetUserById(ctx context.Context, id int64) (core.User, error)
 	GetUsers(ctx context.Context, arg core.GetUsersParams) ([]core.User, error)
+	RatingsByRateeId(ctx context.Context, rateeID sql.NullInt32) ([]core.Rating, error)
 }
 
-func (s *UserService) GetAllUsers(ctx context.Context) ([]core.User, error) {
+func (s *UserService) GetAllUsers(ctx context.Context) ([]api.UserResponse, error) {
 	users, err := s.userRepo.GetAllUsers(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -38,31 +41,72 @@ func (s *UserService) GetAllUsers(ctx context.Context) ([]core.User, error) {
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
-	return users, nil
+
+	var usersResponse []api.UserResponse
+	for _, user := range users {
+		ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user.ID), Valid: true})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+		}
+		var ratingValues []int32
+		for _, rating := range ratings {
+			ratingValues = append(ratingValues, rating.Value.Int32)
+		}
+
+		usersResponse = append(usersResponse, api.UserResponse{
+			Id:        user.ID,
+			Name:      user.Name.String,
+			Email:     user.Email.String,
+			UserType:  user.UserType.UsersUserType,
+			AvgRating: statistics.AvgWeighted(ratingValues),
+			IsBanned:  user.IsBanned.Bool,
+			IsDeleted: user.IsBanned.Bool,
+		})
+	}
+
+	return usersResponse, nil
 }
 
-func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (core.User, error) {
+func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (api.UserResponse, error) {
 	user, err := s.userRepo.GetUsers(ctx, core.GetUsersParams{
 		IsBanned:  sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
 		IsDeleted: sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return core.User{}, pkg.ErrNotFound
+			return api.UserResponse{}, pkg.ErrNotFound
 		}
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
-		return core.User{}, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+		return api.UserResponse{}, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
 	if requesterType == core.UsersUserTypeDefault && user[0].UserType.UsersUserType != core.UsersUserTypeWalker {
-		return core.User{}, pkg.ErrForbiden
+		return api.UserResponse{}, pkg.ErrForbiden
 	}
 
-	return user[0], nil
+	ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user[0].ID), Valid: true})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return api.UserResponse{}, fmt.Errorf("%w: %w", pkg.ErrDbInternal, err)
+	}
+	var ratingValues []int32
+	for _, rating := range ratings {
+		ratingValues = append(ratingValues, rating.Value.Int32)
+	}
+
+	return api.UserResponse{
+		Id:        user[0].ID,
+		Name:      user[0].Name.String,
+		Email:     user[0].Email.String,
+		UserType:  user[0].UserType.UsersUserType,
+		AvgRating: statistics.AvgWeighted(ratingValues),
+		IsBanned:  user[0].IsBanned.Bool,
+		IsDeleted: user[0].IsBanned.Bool,
+	}, nil
 }
 
-func (s *UserService) GetUsers(ctx context.Context, params core.GetUsersParams) ([]core.User, error) {
+func (s *UserService) GetUsers(ctx context.Context, params core.GetUsersParams) ([]api.UserResponse, error) {
 	// if no paramters provided, then return all users
 	if !params.IsBanned.Valid &&
 		!params.UserType.Valid &&
@@ -81,7 +125,29 @@ func (s *UserService) GetUsers(ctx context.Context, params core.GetUsersParams) 
 		return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
-	return users, nil
+	var usersResponse []api.UserResponse
+	for _, user := range users {
+		ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user.ID), Valid: true})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+		}
+		var ratingValues []int32
+		for _, rating := range ratings {
+			ratingValues = append(ratingValues, rating.Value.Int32)
+		}
+
+		usersResponse = append(usersResponse, api.UserResponse{
+			Id:        user.ID,
+			Name:      user.Name.String,
+			Email:     user.Email.String,
+			UserType:  user.UserType.UsersUserType,
+			AvgRating: statistics.AvgWeighted(ratingValues),
+			IsBanned:  user.IsBanned.Bool,
+			IsDeleted: user.IsBanned.Bool,
+		})
+	}
+
+	return usersResponse, nil
 }
 
 func (s *UserService) BanUser(ctx context.Context, id int64) error {

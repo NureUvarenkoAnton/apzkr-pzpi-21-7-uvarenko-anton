@@ -87,6 +87,7 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 	ratingRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeWalker, core.UsersUserTypeDefault}))
 	{
 		ratingRouts.POST("/", handler.RatingHandler.AddRating)
+		ratingRouts.GET("/:id", handler.RatingHandler.GetAvgRating)
 	}
 
 	return router

@@ -14,20 +14,22 @@ import (
 )
 
 type UserHandler struct {
-	userService iUserService
+	userService   iUserService
+	ratingService iRatingService
 }
 
-func NewUserHandler(userService iUserService) *UserHandler {
+func NewUserHandler(userService iUserService, ratingService iRatingService) *UserHandler {
 	return &UserHandler{
-		userService: userService,
+		userService:   userService,
+		ratingService: ratingService,
 	}
 }
 
 type iUserService interface {
 	DeleteUser(ctx context.Context, id int64) error
 	BanUser(ctx context.Context, id int64) error
-	GetUsers(ctx context.Context, params core.GetUsersParams) ([]core.User, error)
-	GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (core.User, error)
+	GetUsers(ctx context.Context, params core.GetUsersParams) ([]api.UserResponse, error)
+	GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (api.UserResponse, error)
 }
 
 func (h *UserHandler) GetUsersAdmin(ctx *gin.Context) {
@@ -60,8 +62,7 @@ func (h *UserHandler) GetUsersAdmin(ctx *gin.Context) {
 		return
 	}
 
-	result := api.SliceDbUserToAPIUser(users)
-	ctx.JSON(http.StatusOK, result)
+	ctx.JSON(http.StatusOK, users)
 }
 
 func (h *UserHandler) GetUserById(ctx *gin.Context) {
@@ -93,7 +94,7 @@ func (h *UserHandler) GetUserById(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.DbUserToAPIUser(users))
+	ctx.JSON(http.StatusOK, users)
 }
 
 func (h *UserHandler) GetWalkers(ctx *gin.Context) {
@@ -115,7 +116,7 @@ func (h *UserHandler) GetWalkers(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.SliceDbUserToAPIUser(users))
+	ctx.JSON(http.StatusOK, users)
 }
 
 func (h *UserHandler) DeleteUser(ctx *gin.Context) {

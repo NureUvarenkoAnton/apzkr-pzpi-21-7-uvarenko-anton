@@ -28,7 +28,7 @@ type iRatingService interface {
 	GetRatingByRateeId(ctx context.Context, rateeId sql.NullInt32) ([]core.Rating, error)
 	GetRatingByRaterId(ctx context.Context, raterId sql.NullInt32) ([]core.Rating, error)
 	AddRating(ctx context.Context, params core.AddRatingParams, userType core.UsersUserType) error
-	GetAvgRating(ctx context.Context, rateeId int) (int, error)
+	GetAvgRating(ctx context.Context, rateeId int) (float64, error)
 }
 
 func (h *RatingHandler) AddRating(ctx *gin.Context) {

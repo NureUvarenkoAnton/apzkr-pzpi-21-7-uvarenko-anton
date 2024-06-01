@@ -15,7 +15,7 @@ type ResponseWSMessage struct {
 }
 
 type AvgRatingResponse struct {
-	AvgRating int `json:"avgRating"`
+	AvgRating float64 `json:"avgRating"`
 }
 
 type UserResponse struct {
@@ -23,6 +23,7 @@ type UserResponse struct {
 	Name      string             `json:"name"`
 	Email     string             `json:"email"`
 	UserType  core.UsersUserType `json:"userType"`
+	AvgRating float64            `json:"avgRating"`
 	IsBanned  bool               `json:"isBanned"`
 	IsDeleted bool               `json:"isDelted"`
 }

@@ -8,6 +8,7 @@ import (
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/statistics"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -87,18 +88,17 @@ func (s *RatingService) GetRatingByRaterId(ctx context.Context, raterId sql.Null
 	return ratings, nil
 }
 
-func (s *RatingService) GetAvgRating(ctx context.Context, rateeId int) (int, error) {
+func (s *RatingService) GetAvgRating(ctx context.Context, rateeId int) (float64, error) {
 	ratings, err := s.GetRatingByRateeId(ctx, sql.NullInt32{Int32: int32(rateeId), Valid: true})
 	if err != nil {
 		return 0, err
 	}
 
-	sum := 0
+	var ratingVals []int32
 	for _, rating := range ratings {
-		sum += int(rating.Value.Int32)
+		ratingVals = append(ratingVals, rating.Value.Int32)
 	}
-
-	return sum / len(ratings), nil
+	return statistics.AvgWeighted(ratingVals), nil
 }
 
 func (s *RatingService) GetRatingByRateeId(ctx context.Context, rateeId sql.NullInt32) ([]core.Rating, error) {

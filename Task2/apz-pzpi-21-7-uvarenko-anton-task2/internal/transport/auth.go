@@ -80,16 +80,21 @@ func (h AuthHandler) Login(ctx *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, pkg.ErrNotFound) {
-			ctx.JSON(http.StatusNotFound, nil)
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		if errors.Is(err, pkg.ErrForbiden) {
+			ctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 
 		if errors.Is(err, pkg.ErrWrongPassword) {
-			ctx.JSON(http.StatusConflict, err)
+			ctx.AbortWithStatus(http.StatusConflict)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 

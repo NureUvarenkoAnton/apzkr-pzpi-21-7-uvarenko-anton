@@ -96,6 +96,10 @@ func (s AuthService) Login(ctx context.Context, payload core.CreateUserParams) (
 		return "", fmt.Errorf("[ERROR] %w: [%w]", pkg.ErrDbInternal, err)
 	}
 
+	if user.IsBanned.Bool {
+		return "", pkg.ErrForbiden
+	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password.String), []byte(payload.Password.String))
 	if err != nil {
 		return "", pkg.ErrWrongPassword

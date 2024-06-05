@@ -19,9 +19,6 @@ func New(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) 
 	}
 }
 
-// TODO: create cronjob that will clear users that has been in delte state more than 2 month
-// TODO: add google translate api
-
 func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

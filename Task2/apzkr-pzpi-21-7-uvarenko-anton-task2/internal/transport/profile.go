@@ -8,6 +8,8 @@ import (
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/api"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/translate"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
@@ -30,10 +32,11 @@ type iUserProfileService interface {
 	GetPetById(ctx context.Context, id int64) (*core.Pet, error)
 	UpdateUserData(ctx context.Context, userData core.UpdateUserParams) error
 	UpdatePet(ctx context.Context, pet core.UpdatePetParams) error
-	GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error)
+	DeletePet(ctx context.Context, petId, ownerId int64) error
+	GetAllPetsByOwnerId(ctx context.Context, lang string, ownerID sql.NullInt64) ([]core.Pet, error)
 }
 
-func (h ProfileHandler) AddPet(ctx *gin.Context) {
+func (h *ProfileHandler) AddPet(ctx *gin.Context) {
 	type AddPetPayload struct {
 		Name           string `json:"name"`
 		Age            int    `json:"age"`
@@ -59,8 +62,24 @@ func (h ProfileHandler) AddPet(ctx *gin.Context) {
 	}
 }
 
-func (h ProfileHandler) GetOwnerPets(ctx *gin.Context) {
-	pets, err := h.profileService.GetAllPetsByOwnerId(ctx, sql.NullInt64{
+func (h *ProfileHandler) GetOwnerPets(ctx *gin.Context) {
+	type LangUri struct {
+		Lang string `uri:"lang"`
+	}
+	var langPayload LangUri
+	err := ctx.ShouldBindUri(&langPayload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if langPayload.Lang != translate.LANG_UA &&
+		langPayload.Lang != translate.LANG_EN {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	pets, err := h.profileService.GetAllPetsByOwnerId(ctx, langPayload.Lang, sql.NullInt64{
 		Int64: ctx.GetInt64("user_id"),
 		Valid: true,
 	})
@@ -71,10 +90,10 @@ func (h ProfileHandler) GetOwnerPets(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusOK, pets)
+	ctx.JSON(http.StatusOK, api.SliceDbPetToApiPet(pets))
 }
 
-func (h ProfileHandler) UpdatePet(ctx *gin.Context) {
+func (h *ProfileHandler) UpdatePet(ctx *gin.Context) {
 	type UpdatePetPayload struct {
 		PetId          int    `json:"pet_id"`
 		Name           string `json:"name"`
@@ -105,7 +124,7 @@ func (h ProfileHandler) UpdatePet(ctx *gin.Context) {
 	}
 }
 
-func (h ProfileHandler) UpdateUser(ctx *gin.Context) {
+func (h *ProfileHandler) UpdateUser(ctx *gin.Context) {
 	type UpdateUserPayload struct {
 		Name  string `json:"name"`
 		Email string `json:"email"`
@@ -131,4 +150,36 @@ func (h ProfileHandler) UpdateUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, nil)
 		return
 	}
+}
+
+func (h *ProfileHandler) DeltePet(ctx *gin.Context) {
+	type IdUri struct {
+		PetId int64 `uri:"id"`
+	}
+	var payload IdUri
+
+	err := ctx.ShouldBindUri(&payload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	ownerId := ctx.GetInt64("user_id")
+	err = h.profileService.DeletePet(ctx, payload.PetId, ownerId)
+	if err != nil {
+		if errors.Is(err, pkg.ErrNotFound) {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		if errors.Is(err, pkg.ErrForbiden) {
+			ctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	ctx.Status(http.StatusOK)
 }

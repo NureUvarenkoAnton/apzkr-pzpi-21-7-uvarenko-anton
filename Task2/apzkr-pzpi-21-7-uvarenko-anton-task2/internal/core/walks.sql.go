@@ -55,7 +55,7 @@ func (q *Queries) GetWalkById(ctx context.Context, id int64) (Walk, error) {
 }
 
 const getWalkInfoByParams = `-- name: GetWalkInfoByParams :many
-SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age FROM walk_info
+SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age, pet_additional_info FROM walk_info
 WHERE
   owner_id = ? OR
   walker_id = ? OR
@@ -91,6 +91,7 @@ func (q *Queries) GetWalkInfoByParams(ctx context.Context, arg GetWalkInfoByPara
 			&i.PetID,
 			&i.PetName,
 			&i.PetAge,
+			&i.PetAdditionalInfo,
 		); err != nil {
 			return nil, err
 		}
@@ -106,7 +107,7 @@ func (q *Queries) GetWalkInfoByParams(ctx context.Context, arg GetWalkInfoByPara
 }
 
 const getWalkInfoByWalkId = `-- name: GetWalkInfoByWalkId :one
-SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age FROM walk_info
+SELECT walk_id, start_time, finish_time, state, owner_id, owner_name, owner_email, walker_id, walker_name, walker_email, pet_id, pet_name, pet_age, pet_additional_info FROM walk_info
 WHERE walk_id = ?
 `
 
@@ -127,6 +128,7 @@ func (q *Queries) GetWalkInfoByWalkId(ctx context.Context, walkID int64) (WalkIn
 		&i.PetID,
 		&i.PetName,
 		&i.PetAge,
+		&i.PetAdditionalInfo,
 	)
 	return i, err
 }

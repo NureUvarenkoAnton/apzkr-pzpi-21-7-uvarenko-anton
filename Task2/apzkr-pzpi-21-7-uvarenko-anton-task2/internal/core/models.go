@@ -121,6 +121,8 @@ type User struct {
 	UserType  NullUsersUserType
 	IsBanned  sql.NullBool
 	IsDeleted sql.NullBool
+	DeletedAt sql.NullTime
+	CreatedAt sql.NullTime
 }
 
 type Walk struct {
@@ -134,17 +136,18 @@ type Walk struct {
 }
 
 type WalkInfo struct {
-	WalkID      int64
-	StartTime   sql.NullTime
-	FinishTime  sql.NullTime
-	State       NullWalksState
-	OwnerID     int64
-	OwnerName   sql.NullString
-	OwnerEmail  sql.NullString
-	WalkerID    int64
-	WalkerName  sql.NullString
-	WalkerEmail sql.NullString
-	PetID       int64
-	PetName     sql.NullString
-	PetAge      sql.NullInt16
+	WalkID            int64
+	StartTime         sql.NullTime
+	FinishTime        sql.NullTime
+	State             NullWalksState
+	OwnerID           int64
+	OwnerName         sql.NullString
+	OwnerEmail        sql.NullString
+	WalkerID          int64
+	WalkerName        sql.NullString
+	WalkerEmail       sql.NullString
+	PetID             int64
+	PetName           sql.NullString
+	PetAge            sql.NullInt16
+	PetAdditionalInfo sql.NullString
 }

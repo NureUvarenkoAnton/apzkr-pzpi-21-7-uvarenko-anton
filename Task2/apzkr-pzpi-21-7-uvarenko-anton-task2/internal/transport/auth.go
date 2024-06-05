@@ -18,7 +18,7 @@ type AuthHandler struct {
 }
 
 type iAuthService interface {
-	RegisterUser(ctx context.Context, user core.CreateUserParams) (string, error)
+	RegisterUser(ctx context.Context, user core.CreateUserParams, toHashPassword bool) (string, error)
 	Login(ctx context.Context, payload core.CreateUserParams) (string, error)
 	LoginPet(ctx context.Context, petId int64, ownerId int64) (string, error)
 }
@@ -30,17 +30,15 @@ func NewAuthHandler(service iAuthService) *AuthHandler {
 }
 
 func (h AuthHandler) RegisterUser(ctx *gin.Context) {
-	type RegisterPayload struct {
-		Name     string `json:"name" binding:"required"`
-		Email    string `json:"email" binding:"required"`
-		Password string `json:"password" binding:"required"`
-		UserType string `json:"userType" binding:"required"`
-	}
-
-	var payload RegisterPayload
+	var payload api.RegisterPayload
 	err := ctx.ShouldBindJSON(&payload)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, pkg.ErrPayloadDecode)
+		return
+	}
+
+	if core.UsersUserType(payload.UserType) == core.UsersUserTypeAdmin {
+		ctx.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
@@ -49,7 +47,7 @@ func (h AuthHandler) RegisterUser(ctx *gin.Context) {
 		Name:     sql.NullString{String: payload.Name, Valid: true},
 		Password: sql.NullString{String: payload.Password, Valid: true},
 		UserType: core.NullUsersUserType{UsersUserType: core.UsersUserType(payload.UserType), Valid: true},
-	})
+	}, true)
 	if err != nil {
 		if errors.Is(err, pkg.ErrEmailDuplicate) {
 			ctx.AbortWithError(http.StatusConflict, err)
@@ -121,6 +119,16 @@ func (h AuthHandler) LoginPet(ctx *gin.Context) {
 
 	token, err := h.authService.LoginPet(ctx, payload.PetId, ownerId)
 	if err != nil {
+		if errors.Is(err, pkg.ErrNotFound) {
+			ctx.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		if errors.Is(err, pkg.ErrForbiden) {
+			ctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

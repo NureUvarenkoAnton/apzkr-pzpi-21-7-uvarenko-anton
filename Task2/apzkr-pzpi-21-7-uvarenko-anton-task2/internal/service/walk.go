@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
@@ -13,12 +14,18 @@ import (
 )
 
 type WalkService struct {
-	walkRepo iWalkRepo
+	walkRepo       iWalkRepo
+	walkTranslator iWalkTranslator
 }
 
-func NewWalkService(walkRepo iWalkRepo) *WalkService {
+type iWalkTranslator interface {
+	Tranlate(text, targetLang string) string
+}
+
+func NewWalkService(walkRepo iWalkRepo, walkTranslator iWalkTranslator) *WalkService {
 	return &WalkService{
-		walkRepo: walkRepo,
+		walkRepo:       walkRepo,
+		walkTranslator: walkTranslator,
 	}
 }
 
@@ -45,13 +52,11 @@ func (s *WalkService) CreateWalk(ctx context.Context, walkParams core.CreateWalk
 		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
-	fmt.Println("result: ", walker)
-
 	if walker.UserType.UsersUserType != core.UsersUserTypeWalker {
 		return pkg.ErrNotFound
 	}
 
-	_, err = s.walkRepo.GetPetById(ctx, walkParams.PetID.Int64)
+	pet, err := s.walkRepo.GetPetById(ctx, walkParams.PetID.Int64)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return pkg.ErrNotFound
@@ -59,6 +64,10 @@ func (s *WalkService) CreateWalk(ctx context.Context, walkParams core.CreateWalk
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	if pet.OwnerID.Int64 != walkParams.OwnerID.Int64 {
+		return pkg.ErrForbiden
 	}
 
 	err = s.walkRepo.CreateWalk(ctx, walkParams)
@@ -112,6 +121,11 @@ func (s *WalkService) UpdateWalkState(ctx context.Context, params core.UpdateWal
 		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
+	if params.State.WalksState == core.WalksStateFinished {
+		params.FinishTime.Time = time.Now()
+		params.FinishTime.Valid = true
+	}
+
 	err = s.walkRepo.UpdateWalkState(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -126,6 +140,7 @@ func (s *WalkService) UpdateWalkState(ctx context.Context, params core.UpdateWal
 
 func (s *WalkService) GetWalksInfoByParams(
 	ctx context.Context,
+	lang string,
 	params core.GetWalkInfoByParamsParams,
 ) ([]core.WalkInfo, error) {
 	info, err := s.walkRepo.GetWalkInfoByParams(ctx, params)
@@ -138,10 +153,14 @@ func (s *WalkService) GetWalksInfoByParams(
 		return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
+	for i, walkInfo := range info {
+		info[i].PetAdditionalInfo.String = s.walkTranslator.Tranlate(walkInfo.PetAdditionalInfo.String, lang)
+	}
+
 	return info, nil
 }
 
-func (s *WalkService) GetWalkInfoByWalkId(ctx context.Context, walkId int64) (core.WalkInfo, error) {
+func (s *WalkService) GetWalkInfoByWalkId(ctx context.Context, lang string, walkId int64) (core.WalkInfo, error) {
 	walkInfo, err := s.walkRepo.GetWalkInfoByWalkId(ctx, walkId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

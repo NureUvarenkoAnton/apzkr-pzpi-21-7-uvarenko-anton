@@ -12,6 +12,7 @@ import (
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/api"
+	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg/translate"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,9 +34,10 @@ type iWalkService interface {
 	UpdateWalkState(ctx context.Context, params core.UpdateWalkStateParams) error
 	GetWalksInfoByParams(
 		ctx context.Context,
+		lang string,
 		params core.GetWalkInfoByParamsParams,
 	) ([]core.WalkInfo, error)
-	GetWalkInfoByWalkId(ctx context.Context, walkId int64) (core.WalkInfo, error)
+	GetWalkInfoByWalkId(ctx context.Context, lang string, walkId int64) (core.WalkInfo, error)
 }
 
 func (h *WalkHalder) CreateWalkRequest(ctx *gin.Context) {
@@ -75,6 +77,11 @@ func (h *WalkHalder) CreateWalkRequest(ctx *gin.Context) {
 			return
 		}
 
+		if errors.Is(err, pkg.ErrForbiden) {
+			ctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -83,22 +90,37 @@ func (h *WalkHalder) CreateWalkRequest(ctx *gin.Context) {
 }
 
 func (h *WalkHalder) GetWalksByParams(ctx *gin.Context) {
+	type LangUri struct {
+		Lang string `uri:"lang"`
+	}
+	var langPayload LangUri
+	err := ctx.ShouldBindUri(&langPayload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if langPayload.Lang != translate.LANG_UA &&
+		langPayload.Lang != translate.LANG_EN {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	type QueryParams struct {
 		WalkerId int64 `form:"walkerId"`
 		OwnerId  int64 `form:"ownerId"`
 		PetId    int64 `form:"petId"`
 	}
 	var payload QueryParams
-	err := ctx.BindQuery(&payload)
+	err = ctx.BindQuery(&payload)
 	if err != nil {
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
 
-	fmt.Println(payload)
-
 	walks, err := h.walkService.GetWalksInfoByParams(
 		ctx,
+		langPayload.Lang,
 		core.GetWalkInfoByParamsParams{
 			OwnerID:  sql.NullInt64{Int64: payload.OwnerId, Valid: payload.OwnerId != 0},
 			WalkerID: sql.NullInt64{Int64: payload.WalkerId, Valid: payload.WalkerId != 0},
@@ -119,7 +141,8 @@ func (h *WalkHalder) GetWalksByParams(ctx *gin.Context) {
 
 func (h *WalkHalder) GetWalkInfoById(ctx *gin.Context) {
 	type UriParams struct {
-		Id int64 `uri:"id"`
+		Id   int64  `uri:"id"`
+		Lang string `uri:"lang"`
 	}
 	var payload UriParams
 	err := ctx.ShouldBindUri(&payload)
@@ -128,7 +151,13 @@ func (h *WalkHalder) GetWalkInfoById(ctx *gin.Context) {
 		return
 	}
 
-	info, err := h.walkService.GetWalkInfoByWalkId(ctx, payload.Id)
+	if payload.Lang != translate.LANG_EN &&
+		payload.Lang != translate.LANG_UA {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	info, err := h.walkService.GetWalkInfoByWalkId(ctx, payload.Lang, payload.Id)
 	if err != nil {
 		if errors.Is(err, pkg.ErrNotFound) {
 			ctx.AbortWithStatus(http.StatusNotFound)
@@ -143,11 +172,27 @@ func (h *WalkHalder) GetWalkInfoById(ctx *gin.Context) {
 }
 
 func (h *WalkHalder) GetWalksBySelfId(ctx *gin.Context) {
+	type LangUri struct {
+		Lang string `uri:"lang" binding:"required"`
+	}
+	var langPayload LangUri
+	err := ctx.ShouldBindUri(&langPayload)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if langPayload.Lang != translate.LANG_EN &&
+		langPayload.Lang != translate.LANG_UA {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
 	type QueryParams struct {
 		WalksState string `form:"walkState"`
 	}
 	var requestPayload QueryParams
-	err := ctx.BindQuery(&requestPayload)
+	err = ctx.BindQuery(&requestPayload)
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
@@ -173,7 +218,6 @@ func (h *WalkHalder) GetWalksBySelfId(ctx *gin.Context) {
 	}
 
 	userType := core.UsersUserType(ctx.GetString("user_type"))
-	fmt.Println("userType: ", userType)
 	if userType != core.UsersUserTypeWalker &&
 		userType != core.UsersUserTypeDefault &&
 		userType != core.UsersUserTypeAdmin {
@@ -189,7 +233,7 @@ func (h *WalkHalder) GetWalksBySelfId(ctx *gin.Context) {
 		payload.WalkerID = sql.NullInt64{Int64: id, Valid: true}
 	}
 
-	walks, err := h.walkService.GetWalksInfoByParams(ctx, payload)
+	walks, err := h.walkService.GetWalksInfoByParams(ctx, langPayload.Lang, payload)
 	if err != nil {
 		if errors.Is(err, pkg.ErrNotFound) {
 			ctx.AbortWithStatus(http.StatusNotFound)

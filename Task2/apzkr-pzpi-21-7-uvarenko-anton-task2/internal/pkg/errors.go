@@ -21,6 +21,9 @@ var (
 	ErrEntityDuplicate = errors.New("entity already exists")
 )
 
+// third party errors
+var ErrTranslation = errors.New("couldn't translate text")
+
 // service errors
 var (
 	ErrEncryptingPassword = errors.New("can't encrypt password")

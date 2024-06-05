@@ -12,6 +12,10 @@ INSERT INTO pets
 VALUES 
   (?, ?, ?, ?);
 
+-- name: DeletePet :exec
+DELETE FROM pets
+WHERE id = ?;
+
 -- name: UpdatePet :exec
 UPDATE pets
 SET

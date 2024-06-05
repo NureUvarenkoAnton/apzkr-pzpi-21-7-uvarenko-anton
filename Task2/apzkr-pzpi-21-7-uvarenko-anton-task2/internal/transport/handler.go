@@ -23,7 +23,7 @@ func NewHandler(
 		AuthHandler:     NewAuthHandler(authService),
 		ProfileHandler:  NewProfileHandler(profileService, melody),
 		PositionHandler: NewPositionHandler(melody, profileService),
-		UserHandler:     NewUserHandler(userService, ratingService),
+		UserHandler:     NewUserHandler(userService, ratingService, authService),
 		WalkHalder:      NewWalkHandler(walkService),
 		RatingHandler:   NewRatingHandler(ratingService),
 	}

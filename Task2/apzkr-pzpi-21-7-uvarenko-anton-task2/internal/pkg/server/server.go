@@ -19,7 +19,11 @@ func New(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) 
 	}
 }
 
+// TODO: create cronjob that will clear users that has been in delte state more than 2 month
+// TODO: add google translate api
+
 func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.Melody) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Logger())
 
@@ -47,8 +51,9 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 	{
 		profileRouts.POST("/pet", handler.ProfileHandler.AddPet)
 		profileRouts.PUT("/pet", handler.ProfileHandler.UpdatePet)
-		profileRouts.GET("/pets", handler.ProfileHandler.GetOwnerPets)
+		profileRouts.GET("/pets/:lang", handler.ProfileHandler.GetOwnerPets)
 		profileRouts.PUT("/user", handler.ProfileHandler.UpdateUser)
+		profileRouts.DELETE("/pet/:id", handler.ProfileHandler.DeltePet)
 	}
 
 	usersDefaultRouts := router.Group("/users")
@@ -58,15 +63,20 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 		core.UsersUserTypeWalker,
 	}))
 	{
+		usersDefaultRouts.GET("/self", handler.UserHandler.GetSelf)
 		usersDefaultRouts.GET("/walkers", handler.UserHandler.GetWalkers)
-		usersDefaultRouts.GET("/:id", handler.UserHandler.GetUserById)
+		usersDefaultRouts.DELETE("/", handler.UserHandler.DeleteSelf)
+		usersDefaultRouts.PUT("/restore", handler.UserHandler.RestoreFromDeletion)
 	}
 
 	userAdminRouts := router.Group("/users/admin")
 	userAdminRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeAdmin}))
 	{
+		userAdminRouts.GET("/:id", handler.UserHandler.GetUserById)
 		userAdminRouts.PUT("/ban", handler.UserHandler.SetBanState)
-		usersDefaultRouts.GET("/", handler.UserHandler.GetUsersAdmin)
+		userAdminRouts.GET("/", handler.UserHandler.GetUsersAdmin)
+		userAdminRouts.GET("/export", handler.UserHandler.ExportUsers)
+		userAdminRouts.POST("/import", handler.UserHandler.ImportUsers)
 	}
 
 	walkRouts := router.Group("/walk")
@@ -78,13 +88,13 @@ func setUpRoutes(handler *transport.Handler, jwtHandler jwt.JWT, melody *melody.
 	{
 		walkRouts.POST("/", handler.WalkHalder.CreateWalkRequest)
 		walkRouts.PUT("/", handler.WalkHalder.UpdateWalkState)
-		walkRouts.GET("/", handler.WalkHalder.GetWalksByParams)
-		walkRouts.GET("/:id", handler.WalkHalder.GetWalkInfoById)
-		walkRouts.GET("/self", handler.WalkHalder.GetWalksBySelfId)
+		walkRouts.GET("/:lang/:id", handler.WalkHalder.GetWalkInfoById)
+		walkRouts.GET("/:lang", handler.WalkHalder.GetWalksByParams)
+		walkRouts.GET("/self/:lang", handler.WalkHalder.GetWalksBySelfId)
 	}
 
 	ratingRouts := router.Group("/rating")
-	ratingRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeWalker, core.UsersUserTypeDefault}))
+	ratingRouts.Use(middleware.TokenVerifier(jwtHandler, []core.UsersUserType{core.UsersUserTypeWalker, core.UsersUserTypeDefault, core.UsersUserTypeAdmin}))
 	{
 		ratingRouts.POST("/", handler.RatingHandler.AddRating)
 		ratingRouts.GET("/:id", handler.RatingHandler.GetAvgRating)

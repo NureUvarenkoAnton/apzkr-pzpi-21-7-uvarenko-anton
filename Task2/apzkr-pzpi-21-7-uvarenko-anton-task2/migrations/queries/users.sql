@@ -17,7 +17,7 @@ WHERE
 SELECT * FROM users;
 
 -- name: CreateUser :exec
-INSERT INTO users (name, email, password, user_type) VALUES(?, ?, ?, ?);
+INSERT INTO users (name, email, password, user_type, created_at) VALUES(?, ?, ?, ?, NOW());
 
 -- name: UpdateUser :exec
 UPDATE users
@@ -27,10 +27,16 @@ SET
 WHERE
   id = ?;
 
--- name: DeleteUser :exec
+-- name: SetDeleteState :exec
 UPDATE users
-SET is_deleted = true
+SET is_deleted = ?
 WHERE id = ?;
+
+-- name: DeleteMarkedUsers :exec
+DELETE FROM users
+WHERE 
+  is_deleted = true AND
+  deleted_at > ?;
 
 -- name: SetBanState :exec
 UPDATE users

@@ -5,5 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255),
   user_type ENUM('default', "pet", 'walker', 'admin') DEFAULT 'default',
   is_banned BOOLEAN DEFAULT FALSE,
-  is_deleted BOOLEAN DEFAULT FALSE
+  is_deleted BOOLEAN DEFAULT FALSE,
+  deleted_at TIMESTAMP DEFAULT NULL,
+  created_at TIMESTAMP
 );

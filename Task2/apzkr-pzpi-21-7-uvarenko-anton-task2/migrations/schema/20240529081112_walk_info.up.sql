@@ -12,7 +12,8 @@ SELECT
   walker.email as walker_email,
   p.id as pet_id,
   p.name as pet_name,
-  p.age as pet_age
+  p.age as pet_age,
+  p.additional_info as pet_additional_info
 FROM walks as w, users as owner, users as walker, pets as p
 WHERE 
   w.owner_id = owner.id AND

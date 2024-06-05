@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
@@ -25,7 +26,8 @@ func NewUserService(userRepo iUsersRepo) *UserService {
 type iUsersRepo interface {
 	GetAllUsers(ctx context.Context) ([]core.User, error)
 	SetBanState(ctx context.Context, arg core.SetBanStateParams) error
-	DeleteUser(ctx context.Context, id int64) error
+	SetDeleteState(ctx context.Context, arg core.SetDeleteStateParams) error
+	DeleteMarkedUsers(ctx context.Context, deletedAt sql.NullTime) error
 	GetUserById(ctx context.Context, id int64) (core.User, error)
 	GetUsers(ctx context.Context, arg core.GetUsersParams) ([]core.User, error)
 	RatingsByRateeId(ctx context.Context, rateeID sql.NullInt32) ([]core.Rating, error)
@@ -68,10 +70,7 @@ func (s *UserService) GetAllUsers(ctx context.Context) ([]api.UserResponse, erro
 }
 
 func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.UsersUserType) (api.UserResponse, error) {
-	user, err := s.userRepo.GetUsers(ctx, core.GetUsersParams{
-		IsBanned:  sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
-		IsDeleted: sql.NullBool{Bool: false, Valid: requesterType != core.UsersUserTypeAdmin},
-	})
+	user, err := s.userRepo.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return api.UserResponse{}, pkg.ErrNotFound
@@ -81,11 +80,11 @@ func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.
 		return api.UserResponse{}, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
-	if requesterType == core.UsersUserTypeDefault && user[0].UserType.UsersUserType != core.UsersUserTypeWalker {
+	if requesterType == core.UsersUserTypeDefault && user.UserType.UsersUserType != core.UsersUserTypeWalker {
 		return api.UserResponse{}, pkg.ErrForbiden
 	}
 
-	ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user[0].ID), Valid: true})
+	ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user.ID), Valid: true})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return api.UserResponse{}, fmt.Errorf("%w: %w", pkg.ErrDbInternal, err)
@@ -96,13 +95,13 @@ func (s *UserService) GetById(ctx context.Context, id int64, requesterType core.
 	}
 
 	return api.UserResponse{
-		Id:        user[0].ID,
-		Name:      user[0].Name.String,
-		Email:     user[0].Email.String,
-		UserType:  user[0].UserType.UsersUserType,
+		Id:        user.ID,
+		Name:      user.Name.String,
+		Email:     user.Email.String,
+		UserType:  user.UserType.UsersUserType,
 		AvgRating: statistics.AvgWeighted(ratingValues),
-		IsBanned:  user[0].IsBanned.Bool,
-		IsDeleted: user[0].IsBanned.Bool,
+		IsBanned:  user.IsBanned.Bool,
+		IsDeleted: user.IsBanned.Bool,
 	}, nil
 }
 
@@ -128,7 +127,7 @@ func (s *UserService) GetUsers(ctx context.Context, params core.GetUsersParams) 
 	var usersResponse []api.UserResponse
 	for _, user := range users {
 		ratings, err := s.userRepo.RatingsByRateeId(ctx, sql.NullInt32{Int32: int32(user.ID), Valid: true})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			return nil, fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 		}
 		var ratingValues []int32
@@ -173,8 +172,34 @@ func (s *UserService) BanUser(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
-	err := s.userRepo.DeleteUser(ctx, id)
+func (s *UserService) MarkDeleted(ctx context.Context, id int64) error {
+	err := s.userRepo.SetDeleteState(ctx, core.SetDeleteStateParams{
+		ID:        id,
+		IsDeleted: sql.NullBool{Bool: true, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+	return nil
+}
+
+func (s *UserService) DelteMarkedUsers(ctx context.Context, t time.Time) {
+	err := s.userRepo.DeleteMarkedUsers(ctx, sql.NullTime{Time: t, Valid: true})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+	}
+}
+
+func (s *UserService) RestoreFromDeletion(ctx context.Context, id int64) error {
+	err := s.userRepo.SetDeleteState(ctx, core.SetDeleteStateParams{
+		ID:        id,
+		IsDeleted: sql.NullBool{Bool: false, Valid: true},
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return pkg.ErrNotFound

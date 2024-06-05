@@ -19,12 +19,14 @@ func NewService(
 	usersRepo iUsersRepo,
 	walkRepo iWalkRepo,
 	ratingRepo iRatingRepo,
+	petTranslator iPetTranlsator,
+	waklTranslator iWalkTranslator,
 ) *Service {
 	return &Service{
 		AuthService:    NewAuthService(authRepo, jwtHandler),
-		ProfileService: NewProfileService(profileRepo),
+		ProfileService: NewProfileService(profileRepo, petTranslator),
 		UsersService:   NewUserService(usersRepo),
-		WalkService:    NewWalkService(walkRepo),
+		WalkService:    NewWalkService(walkRepo, waklTranslator),
 		RatingService:  NewRatingSrvice(ratingRepo),
 	}
 }

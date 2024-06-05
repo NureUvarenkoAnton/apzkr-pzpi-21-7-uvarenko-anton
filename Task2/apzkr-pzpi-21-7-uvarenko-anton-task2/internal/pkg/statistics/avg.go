@@ -5,6 +5,9 @@ type numbers interface {
 }
 
 func AvgWeighted[E numbers](nums []E) float64 {
+	if len(nums) == 0 {
+		return 0
+	}
 	freq := make(map[E]E)
 	for _, num := range nums {
 		freq[num]++

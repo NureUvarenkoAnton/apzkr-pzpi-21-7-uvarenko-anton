@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -16,7 +17,10 @@ func main() {
 	arg := os.Args[1]
 	godotenv.Load()
 	db, _ := sql.Open("mysql", os.Getenv("CONNECTION_STRING"))
-	driver, _ := mysql.WithInstance(db, &mysql.Config{})
+	driver, err := mysql.WithInstance(db, &mysql.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
 	m, _ := migrate.NewWithDatabaseInstance(
 		"file://migrations/schema",
 		"mysql",

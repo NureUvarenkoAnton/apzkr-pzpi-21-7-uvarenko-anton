@@ -11,7 +11,7 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (name, email, password, user_type) VALUES(?, ?, ?, ?)
+INSERT INTO users (name, email, password, user_type, created_at) VALUES(?, ?, ?, ?, NOW())
 `
 
 type CreateUserParams struct {
@@ -31,19 +31,20 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
-UPDATE users
-SET is_deleted = true
-WHERE id = ?
+const deleteMarkedUsers = `-- name: DeleteMarkedUsers :exec
+DELETE FROM users
+WHERE 
+  is_deleted = true AND
+  deleted_at > ?
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, id)
+func (q *Queries) DeleteMarkedUsers(ctx context.Context, deletedAt sql.NullTime) error {
+	_, err := q.db.ExecContext(ctx, deleteMarkedUsers, deletedAt)
 	return err
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
+SELECT id, name, email, password, user_type, is_banned, is_deleted, deleted_at, created_at FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -63,6 +64,8 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.UserType,
 			&i.IsBanned,
 			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -78,7 +81,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
+SELECT id, name, email, password, user_type, is_banned, is_deleted, deleted_at, created_at FROM users
 WHERE email = ?
 `
 
@@ -93,12 +96,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email sql.NullString) (Use
 		&i.UserType,
 		&i.IsBanned,
 		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
+SELECT id, name, email, password, user_type, is_banned, is_deleted, deleted_at, created_at FROM users
 WHERE id = ?
 `
 
@@ -113,12 +118,14 @@ func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 		&i.UserType,
 		&i.IsBanned,
 		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, name, email, password, user_type, is_banned, is_deleted FROM users
+SELECT id, name, email, password, user_type, is_banned, is_deleted, deleted_at, created_at FROM users
 WHERE 
 (? is NULL OR user_type = ?) AND
 (? is NULL OR is_banned = ?) AND
@@ -155,6 +162,8 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]User, err
 			&i.UserType,
 			&i.IsBanned,
 			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -182,6 +191,22 @@ type SetBanStateParams struct {
 
 func (q *Queries) SetBanState(ctx context.Context, arg SetBanStateParams) error {
 	_, err := q.db.ExecContext(ctx, setBanState, arg.IsBanned, arg.ID)
+	return err
+}
+
+const setDeleteState = `-- name: SetDeleteState :exec
+UPDATE users
+SET is_deleted = ?
+WHERE id = ?
+`
+
+type SetDeleteStateParams struct {
+	IsDeleted sql.NullBool
+	ID        int64
+}
+
+func (q *Queries) SetDeleteState(ctx context.Context, arg SetDeleteStateParams) error {
+	_, err := q.db.ExecContext(ctx, setDeleteState, arg.IsDeleted, arg.ID)
 	return err
 }
 

@@ -35,7 +35,7 @@ func NewAuthService(repo iAuthRepo, jwtHandler jwt.JWT) *AuthService {
 	}
 }
 
-func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParams) (string, error) {
+func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParams, toHashPassword bool) (string, error) {
 	u, err := s.userRepo.GetUserByEmail(ctx, user.Email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		pkg.PrintErr(pkg.ErrDbInternal, err)
@@ -46,12 +46,14 @@ func (s AuthService) RegisterUser(ctx context.Context, user core.CreateUserParam
 		return "", pkg.ErrEmailDuplicate
 	}
 
-	pass, err := bcrypt.GenerateFromPassword([]byte(user.Password.String), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("%w: [%w]", pkg.ErrEncryptingPassword, err)
-	}
+	if toHashPassword {
+		pass, err := bcrypt.GenerateFromPassword([]byte(user.Password.String), bcrypt.DefaultCost)
+		if err != nil {
+			return "", fmt.Errorf("%w: [%w]", pkg.ErrEncryptingPassword, err)
+		}
 
-	user.Password.String = string(pass)
+		user.Password.String = string(pass)
+	}
 
 	err = s.userRepo.CreateUser(ctx, user)
 	if err != nil {
@@ -117,6 +119,10 @@ func (s AuthService) LoginPet(ctx context.Context, petId int64, ownerId int64) (
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return "", fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	if pet.OwnerID.Int64 != ownerId {
+		return "", pkg.ErrForbiden
 	}
 
 	token, err := s.jwtHandler.GenUserToken(pet.ID, core.UsersUserTypePet, time.Now().Add(time.Hour*24))

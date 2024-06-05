@@ -34,6 +34,16 @@ func (q *Queries) AddPet(ctx context.Context, arg AddPetParams) error {
 	return err
 }
 
+const deletePet = `-- name: DeletePet :exec
+DELETE FROM pets
+WHERE id = ?
+`
+
+func (q *Queries) DeletePet(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deletePet, id)
+	return err
+}
+
 const getAllPetsByOwnerId = `-- name: GetAllPetsByOwnerId :many
 SELECT id, owner_id, name, age, additional_info FROM pets
 WHERE owner_id = ?

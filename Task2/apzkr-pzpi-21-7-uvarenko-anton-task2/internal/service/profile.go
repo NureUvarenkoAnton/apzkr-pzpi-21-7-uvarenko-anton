@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/core"
 	"NureUvarenkoAnton/apzkr-pzpi-21-7-uvarenko-anton/Task2/apzkr-pzpi-21-7-uvarenko-anton-task2/internal/pkg"
@@ -12,12 +13,14 @@ import (
 )
 
 type ProfileService struct {
-	userRepo iProfileRepo
+	userRepo      iProfileRepo
+	petTranslator iPetTranlsator
 }
 
-func NewProfileService(userRepo iProfileRepo) *ProfileService {
+func NewProfileService(userRepo iProfileRepo, petTranslator iPetTranlsator) *ProfileService {
 	return &ProfileService{
-		userRepo: userRepo,
+		userRepo:      userRepo,
+		petTranslator: petTranslator,
 	}
 }
 
@@ -26,7 +29,12 @@ type iProfileRepo interface {
 	UpdatePet(ctx context.Context, arg core.UpdatePetParams) error
 	GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error)
 	AddPet(ctx context.Context, arg core.AddPetParams) error
+	DeletePet(ctx context.Context, id int64) error
 	UpdateUser(ctx context.Context, arg core.UpdateUserParams) error
+}
+
+type iPetTranlsator interface {
+	Tranlate(text, targetLang string) string
 }
 
 func (s *ProfileService) AddPet(ctx context.Context, pet core.AddPetParams) error {
@@ -59,7 +67,7 @@ func (s *ProfileService) GetPetById(ctx context.Context, id int64) (*core.Pet, e
 	return &pet, nil
 }
 
-func (s *ProfileService) GetAllPetsByOwnerId(ctx context.Context, ownerID sql.NullInt64) ([]core.Pet, error) {
+func (s *ProfileService) GetAllPetsByOwnerId(ctx context.Context, lang string, ownerID sql.NullInt64) ([]core.Pet, error) {
 	pets, err := s.userRepo.GetAllPetsByOwnerId(ctx, ownerID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -68,6 +76,14 @@ func (s *ProfileService) GetAllPetsByOwnerId(ctx context.Context, ownerID sql.Nu
 
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return nil, pkg.ErrDbInternal
+	}
+
+	for i, pet := range pets {
+		if pet.AdditionalInfo.String != "" {
+			fmt.Println(lang)
+			translation := s.petTranslator.Tranlate(pet.AdditionalInfo.String, lang)
+			pets[i].AdditionalInfo.String = translation
+		}
 	}
 
 	return pets, nil
@@ -93,6 +109,34 @@ func (s *ProfileService) UpdatePet(ctx context.Context, pet core.UpdatePetParams
 		pkg.PrintErr(pkg.ErrDbInternal, err)
 		return pkg.ErrDbInternal
 
+	}
+
+	return nil
+}
+
+func (s *ProfileService) DeletePet(ctx context.Context, petId, ownerId int64) error {
+	pet, err := s.userRepo.GetPetById(ctx, petId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
+	}
+
+	if pet.OwnerID.Int64 != ownerId {
+		return pkg.ErrForbiden
+	}
+
+	err = s.userRepo.DeletePet(ctx, petId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pkg.ErrNotFound
+		}
+
+		pkg.PrintErr(pkg.ErrDbInternal, err)
+		return fmt.Errorf("%w: [%w]", pkg.ErrDbInternal, err)
 	}
 
 	return nil

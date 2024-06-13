@@ -43,5 +43,5 @@ func main() {
 	)
 
 	s := server.New(handler, *jwtHandler, m)
-	log.Fatal(s.ListenAndServeTLS("certificates/localhost.pem", "certificates/localhost-key.pem"))
+	log.Fatal(s.ListenAndServe())
 }

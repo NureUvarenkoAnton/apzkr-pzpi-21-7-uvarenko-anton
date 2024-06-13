@@ -11,5 +11,5 @@ FROM alpine
 COPY --from=builder /app/app /home/app
 COPY --from=builder /app/mig /home/mig
 COPY --from=builder /app/migrations /home/migrations
-CMD /home/mig ; /home/app 
+CMD /home/mig up ; /home/app 
 

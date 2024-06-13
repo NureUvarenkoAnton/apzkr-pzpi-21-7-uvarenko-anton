@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -43,5 +44,6 @@ func main() {
 	)
 
 	s := server.New(handler, *jwtHandler, m)
+	fmt.Println("starting server...")
 	log.Fatal(s.ListenAndServe())
 }
